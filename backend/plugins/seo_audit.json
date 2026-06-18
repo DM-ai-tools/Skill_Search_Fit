@@ -1,0 +1,96 @@
+{
+  "plugin_name": "SEO Audit",
+  "description": "Run a comprehensive SEO audit covering crawlability, meta tags, headings, images, performance, schema, internal links, and mobile accessibility.",
+  "category": "technical",
+  "icon": "clipboard-check",
+  "input_fields": [
+    {
+      "name": "audit_type",
+      "label": "Audit Type",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "live_website", "label": "Live Website (URL crawl)" },
+        { "value": "codebase", "label": "Codebase / Project Files" },
+        { "value": "hybrid", "label": "Hybrid (URL + codebase files)" }
+      ]
+    },
+    {
+      "name": "site_url",
+      "label": "Site URL",
+      "type": "url",
+      "required": true,
+      "placeholder": "https://example.com"
+    },
+    {
+      "name": "site_name",
+      "label": "Site / Project Name",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. SearchFit.ai Marketing Site"
+    },
+    {
+      "name": "sitemap_url",
+      "label": "Sitemap URL",
+      "type": "url",
+      "required": false,
+      "placeholder": "https://example.com/sitemap.xml"
+    },
+    {
+      "name": "robots_txt_content",
+      "label": "robots.txt Content",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "User-agent: *\nAllow: /\nSitemap: https://example.com/sitemap.xml",
+      "help_text": "Paste robots.txt if known — checked for crawlability issues"
+    },
+    {
+      "name": "pages_to_audit",
+      "label": "Pages to Audit",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "https://example.com/\nhttps://example.com/about\nhttps://example.com/blog/seo-guide",
+      "help_text": "URLs (live audit) or file paths (codebase audit) — one per line"
+    },
+    {
+      "name": "codebase_content",
+      "label": "Codebase / Page Source",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "Paste page.tsx, layout files, meta configs, or HTML source...",
+      "help_text": "For codebase/hybrid audits — paste relevant source files"
+    },
+    {
+      "name": "max_pages",
+      "label": "Max Pages to Analyze",
+      "type": "number",
+      "required": false,
+      "placeholder": "20",
+      "help_text": "Limit scope for large sites (default: all listed pages)"
+    },
+    {
+      "name": "target_keywords",
+      "label": "Target Keywords (per page)",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "/blog/seo-guide — on-page seo\n/pricing — seo software pricing",
+      "help_text": "Optional — URL/path + keyword for title/meta validation"
+    },
+    {
+      "name": "audit_focus",
+      "label": "Priority Focus Areas",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "full", "label": "Full audit (all 8 areas)" },
+        { "value": "technical", "label": "Technical SEO (crawl, index, schema)" },
+        { "value": "on_page", "label": "On-page (meta, headings, content)" },
+        { "value": "performance", "label": "Performance & Core Web Vitals signals" }
+      ]
+    }
+  ],
+  "prompts": {
+    "system": "You are an expert SEO auditor powered by SearchFit.ai. Run thorough audits and deliver actionable findings.\n\n## What You Audit\n\n1. **Crawlability & Indexation** — robots.txt, sitemap, noindex/nofollow, canonicals, orphan pages\n2. **Meta Tags & Head** — title (50-60), meta description (150-160), OG tags, Twitter cards, canonical, viewport\n3. **Heading Structure** — one H1, logical hierarchy, keywords, no empty headings\n4. **Images** — alt attributes, descriptive alt, modern formats, width/height\n5. **Performance Signals** — render-blocking, lazy loading, excessive JS, SSR/SSG patterns\n6. **Structured Data** — JSON-LD presence, correct types, required properties\n7. **Internal Linking** — broken links, link depth, excessive links, anchor diversity\n8. **Mobile & Accessibility** — responsive, touch targets, font sizes, contrast\n\n## Output Format\n\n## SEO Audit Report\n\n**Site**, **Pages Analyzed**, **Overall Score** 0-100\n\n### Critical Issues (must fix)\n### Warnings (should fix)\n### Opportunities (nice to have)\n### Passing\n\nScore: 90-100 Excellent | 70-89 Good | 50-69 Needs work | <50 Critical\n\nUse checkboxes - [ ] for issues with file:line or URL references.",
+    "primary": "Run a comprehensive SEO audit with the following inputs.\n\n## Audit Configuration\n\n- **Audit Type:** {{audit_type}}\n- **Site URL:** {{site_url}}\n- **Site Name:** {{site_name}}\n- **Sitemap URL:** {{sitemap_url}}\n- **Max Pages:** {{max_pages}}\n- **Priority Focus:** {{audit_focus}}\n\n## robots.txt\n\n{{robots_txt_content}}\n\n## Pages to Audit\n\n{{pages_to_audit}}\n\n## Codebase / Page Source\n\n{{codebase_content}}\n\n## Target Keywords\n\n{{target_keywords}}\n\n---\n\nPerform a full SEO audit following your 8 audit areas (adjust depth based on priority focus).\n\nFor **live website** audits: analyze provided URLs and infer common issues from site structure, robots.txt, and sitemap. Note limitations if you cannot HTTP-fetch pages.\n\nFor **codebase** audits: analyze pasted source files for meta tags, headings, images, schema, Next.js patterns, and accessibility.\n\nFor each finding:\n- Classify as **Critical**, **Warning**, or **Opportunity**\n- Reference specific URL or file:line where possible\n- Provide actionable fix instructions\n\nCalculate an **Overall Score** 0-100 with score band interpretation.\n\nList what's **Passing** (done well).\n\nProduce the complete SEO Audit Report in the exact output format from your instructions."
+  }
+}

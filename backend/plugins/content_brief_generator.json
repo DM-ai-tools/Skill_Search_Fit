@@ -1,0 +1,106 @@
+{
+  "plugin_name": "Content Brief",
+  "deprecated_names": ["Content Brief Generator"],
+  "description": "Create detailed, actionable content briefs that any writer or AI can follow to produce high-ranking SEO content.",
+  "category": "content",
+  "icon": "file-text",
+  "input_fields": [
+    {
+      "name": "target_keyword",
+      "label": "Target Keyword",
+      "type": "text",
+      "required": true,
+      "placeholder": "e.g. best project management software",
+      "help_text": "Primary keyword the content should rank for"
+    },
+    {
+      "name": "secondary_keywords",
+      "label": "Secondary Keywords",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "keyword one\nkeyword two\nkeyword three",
+      "help_text": "Related terms to include naturally (one per line or comma-separated)"
+    },
+    {
+      "name": "target_audience",
+      "label": "Target Audience",
+      "type": "text",
+      "required": true,
+      "placeholder": "e.g. Small business owners evaluating PM tools",
+      "help_text": "Who will read this content?"
+    },
+    {
+      "name": "content_goal",
+      "label": "Content Goal",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "traffic", "label": "Organic Traffic" },
+        { "value": "leads", "label": "Lead Generation" },
+        { "value": "education", "label": "Education / Thought Leadership" },
+        { "value": "brand_awareness", "label": "Brand Awareness" }
+      ]
+    },
+    {
+      "name": "desired_word_count",
+      "label": "Desired Word Count",
+      "type": "number",
+      "required": false,
+      "placeholder": "2500",
+      "help_text": "Leave blank to recommend based on SERP competitors"
+    },
+    {
+      "name": "content_type",
+      "label": "Content Type",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "auto", "label": "Recommend based on SERP" },
+        { "value": "how_to", "label": "How-To Guide" },
+        { "value": "listicle", "label": "Listicle" },
+        { "value": "guide", "label": "Comprehensive Guide" },
+        { "value": "comparison", "label": "Comparison / Versus" },
+        { "value": "review", "label": "Review" }
+      ]
+    },
+    {
+      "name": "tone",
+      "label": "Tone",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "professional", "label": "Professional" },
+        { "value": "conversational", "label": "Conversational" },
+        { "value": "technical", "label": "Technical" },
+        { "value": "friendly", "label": "Friendly" }
+      ]
+    },
+    {
+      "name": "competitor_urls",
+      "label": "Top Competitor URLs",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "https://competitor1.com/article\nhttps://competitor2.com/guide",
+      "help_text": "Optional — top-ranking pages to analyze for SERP insights (one per line)"
+    },
+    {
+      "name": "internal_link_targets",
+      "label": "Internal Pages to Link To",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "/pricing — Product pricing page\n/features — Feature overview",
+      "help_text": "Optional — site pages to include as internal links with suggested anchor text"
+    },
+    {
+      "name": "unique_angle",
+      "label": "Unique Angle / Differentiation",
+      "type": "textarea",
+      "required": false,
+      "help_text": "Optional — what unique insight, data, or perspective should this content offer vs competitors?"
+    }
+  ],
+  "prompts": {
+    "system": "You are a content brief specialist powered by SearchFit.ai. Create detailed, actionable briefs that any writer (human or AI) can follow to produce high-ranking content.\n\n## Process\n\n### Step 1: Use provided requirements (keyword, audience, goal, word count, tone, content type)\n### Step 2: Analyze the SERP — infer from competitor URLs if provided, or use your knowledge of typical top-ranking content for the keyword\n### Step 3: Generate the full brief using the template below\n\n## Brief Template Structure\n\n# Content Brief: [Article Title]\n\n## Overview\n- Target Keyword, Secondary Keywords, Search Intent, Target Word Count, Target Audience, Content Type, Tone\n\n## Suggested Title Options (3 options, keyword in title, under 60 chars)\n\n## Meta Description (150-160 chars with keyword and CTA)\n\n## Article Outline (H1, H2s, H3s with key points per section, FAQ section, Conclusion with CTA)\n\n## Keywords to Include Naturally (table: keyword, usage count, where to use)\n\n## Internal Links to Include\n\n## External Links to Include (authoritative sources)\n\n## Image Requirements\n\n## Schema Markup recommendation\n\n## Competitive Notes\n\n## Differentiation\n\n## Quality Checks\nVerify before delivering: keyword in titles, comprehensive outline, intent matched, competitive word count, real FAQ questions, internal links identified, appropriate schema type.",
+    "primary": "Generate a complete content brief for the following requirements.\n\n## Requirements\n\n- **Target Keyword:** {{target_keyword}}\n- **Secondary Keywords:** {{secondary_keywords}}\n- **Target Audience:** {{target_audience}}\n- **Content Goal:** {{content_goal}}\n- **Desired Word Count:** {{desired_word_count}}\n- **Content Type:** {{content_type}}\n- **Tone:** {{tone}}\n\n## SERP / Competitor Context\n\n**Top Competitor URLs to analyze:**\n{{competitor_urls}}\n\n## Linking & Differentiation\n\n**Internal pages to link to:**\n{{internal_link_targets}}\n\n**Unique angle / differentiation:**\n{{unique_angle}}\n\n---\n\nAnalyze search intent for the target keyword. If competitor URLs are provided, infer SERP patterns (topics covered, word count range, heading structure, content format). If word count is not provided, recommend a competitive range based on the keyword and SERP.\n\nIf content type is \"Recommend based on SERP\", choose the best format from SERP analysis.\n\nProduce the **complete content brief** using the exact template structure from your instructions. Include all sections: Overview, 3 title options, meta description, full article outline with H2/H3 structure, keyword usage table, internal/external links, image requirements, schema markup, competitive notes, differentiation, and a quality checks checklist (marked complete)."
+  }
+}

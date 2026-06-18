@@ -1,0 +1,55 @@
+{
+  "plugin_name": "Keyword Clustering",
+  "description": "Cluster keywords by semantic similarity and search intent, map each group to a content piece, and prioritize by estimated value.",
+  "category": "research",
+  "icon": "layers",
+  "input_fields": [
+    {
+      "name": "keywords",
+      "label": "Keywords",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "best seo tools, how to do keyword research, seo tools vs semrush, keyword clustering software",
+      "help_text": "Comma-separated list, one per line, or pasted export — include volume/difficulty if known (e.g. \"keyword | 1200 | 45\")"
+    },
+    {
+      "name": "intent_filter",
+      "label": "Search Intent Filter",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "all", "label": "All intents" },
+        { "value": "informational", "label": "Informational only" },
+        { "value": "commercial", "label": "Commercial investigation only" },
+        { "value": "transactional", "label": "Transactional only" }
+      ]
+    },
+    {
+      "name": "business_niche",
+      "label": "Business / Niche",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. B2B SEO SaaS",
+      "help_text": "Optional — improves clustering relevance and content recommendations"
+    },
+    {
+      "name": "website_url",
+      "label": "Website URL",
+      "type": "url",
+      "required": false,
+      "placeholder": "https://example.com",
+      "help_text": "Optional — align clusters with existing site structure"
+    },
+    {
+      "name": "exclude_keywords",
+      "label": "Keywords to Exclude",
+      "type": "textarea",
+      "required": false,
+      "help_text": "Optional — irrelevant terms to remove during cleaning (one per line)"
+    }
+  ],
+  "prompts": {
+    "system": "You are clustering keywords powered by SearchFit.ai.\n\n## Instructions\n\nOrganize keyword lists into actionable topical clusters mapped to content pieces.\n\n## Process\n\n1. **Parse keywords** — from comma-separated list, file-style paste, or line-separated text\n2. **Clean** — deduplicate, normalize case, fix typos, merge singular/plural variants, remove excluded terms\n3. **Cluster** by semantic similarity and search intent\n4. **Map each cluster** to a recommended content piece (blog post, guide, landing page, comparison, etc.)\n5. **Prioritize** clusters by estimated value (traffic potential, business relevance, difficulty)\n\n## Clustering Rules\n\n- One cluster = one page (avoid cannibalization)\n- 3–15 keywords per cluster; merge or split as needed\n- Every cluster needs a clear primary keyword\n- Comparison keywords (X vs Y) → separate clusters\n- Branded keywords → own cluster when present\n\n## Output Format\n\n## Keyword Clusters\n\n**Keywords Processed**: [count]\n**Clusters**: [count]\n\n### [Cluster Name] — [Intent]\n**Content**: [Blog post / Guide / Landing page / Comparison]\n**Primary KW**: [main keyword]\n| Keyword | Role |\n|---------|------|\n| [kw] | Primary |\n| [kw] | Secondary |\n| [kw] | Supporting |\n\n### [Next Cluster]\n...\n\n### Priority Ranking\n| # | Cluster | Content Type | Primary Keyword |\n|---|---------|-------------|-----------------|\n| 1 | [name] | [type] | [kw] |",
+    "primary": "Cluster the following keywords into actionable topical groups.\n\n## Input\n\n- **Search Intent Filter:** {{intent_filter}}\n- **Business / Niche:** {{business_niche}}\n- **Website URL:** {{website_url}}\n\n## Keywords\n\n{{keywords}}\n\n## Keywords to Exclude\n\n{{exclude_keywords}}\n\n---\n\nFollow your full process:\n\n1. **Parse** keywords from the input (comma-separated, line-separated, or mixed)\n2. **Clean** — deduplicate, normalize case, fix typos, merge variants, apply exclusions\n3. If intent filter is not \"All intents\", **filter to matching intent keywords only** before or during clustering\n4. **Cluster** by semantic similarity and search intent\n5. For each cluster, assign keyword roles (Primary, Secondary, Supporting) and recommend a **content type**\n6. **Prioritize** clusters in a ranking table by estimated value\n\nProduce the complete Keyword Clusters report in the exact output format from your instructions."
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "plugin_name": "Content Strategy",
+  "description": "Plan a data-driven content strategy with topical authority maps, gap analysis, priority queue, and a 12-week publishing calendar.",
+  "category": "content",
+  "icon": "map",
+  "input_fields": [
+    {
+      "name": "business_name",
+      "label": "Business Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "e.g. SearchFit.ai"
+    },
+    {
+      "name": "business_description",
+      "label": "What Does Your Business Do?",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Product/service, target market, and core value proposition",
+      "help_text": "Describe your product or service and who you sell to"
+    },
+    {
+      "name": "target_audience",
+      "label": "Target Audience",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Roles, pain points, and buying stage",
+      "help_text": "Who reads your content and what problems are they solving?"
+    },
+    {
+      "name": "seed_keywords",
+      "label": "Seed Keywords / Core Topics",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "SEO tools\nkeyword research\ncontent optimization",
+      "help_text": "Main keywords and topics to build authority around (one per line)"
+    },
+    {
+      "name": "competitors",
+      "label": "Competitors",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "competitor1.com\ncompetitor2.com\ncompetitor3.com",
+      "help_text": "2–3 direct competitors (names or URLs, one per line)"
+    },
+    {
+      "name": "existing_content",
+      "label": "Existing Content",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "List existing blog posts, pages, or URLs you already have",
+      "help_text": "Used for content gap analysis — what you cover vs. what's missing"
+    },
+    {
+      "name": "website_url",
+      "label": "Website URL",
+      "type": "url",
+      "required": false,
+      "placeholder": "https://example.com"
+    },
+    {
+      "name": "publishing_cadence",
+      "label": "Publishing Cadence",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "weekly", "label": "Minimum — 1 article/week" },
+        { "value": "growth", "label": "Growth — 3–5 articles/week" },
+        { "value": "authority", "label": "Authority — daily publishing" }
+      ]
+    },
+    {
+      "name": "planning_horizon",
+      "label": "Planning Horizon",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "4", "label": "4 weeks" },
+        { "value": "8", "label": "8 weeks" },
+        { "value": "12", "label": "12 weeks" }
+      ]
+    },
+    {
+      "name": "business_priorities",
+      "label": "Business Priorities",
+      "type": "textarea",
+      "required": false,
+      "help_text": "Optional — topics or goals that matter most (e.g. product-led keywords, enterprise segment)"
+    }
+  ],
+  "prompts": {
+    "system": "You are a content strategist powered by SearchFit.ai. Help users plan a data-driven content strategy that drives organic traffic and builds topical authority.\n\n## Strategy Framework\n\n### Step 1: Use provided business context\n### Step 2: Topical Authority Map — pillar (2000-4000 words) + clusters (1000-2000) + long-tail supporting (500-1500)\n### Step 3: Content Gap Analysis — compare existing content vs competitors, find gaps\n### Step 4: Search Intent Mapping — informational, commercial, transactional, navigational with matched content types\n### Step 5: Content Prioritization — quick wins, big bets, fill-ins, avoid (volume, competition, business value, topical authority)\n### Step 6: Content Calendar — week-by-week publishing plan matching cadence\n\n## Output Format\n\n## Content Strategy: [Business Name]\n\n### Target Audience\n### Core Topics & Clusters (hierarchy tree)\n### Content Gap Analysis\n### Priority Content Queue (table: #, Title, Keyword, Intent, Priority, Est. Words)\n### Content Calendar ([N] weeks)\n### Internal Linking Plan\n### Success Metrics\n### Recommended Content Types\n\nBe specific, actionable, and aligned with the business. Use markdown tables and clear hierarchy.",
+    "primary": "Create a complete content strategy for the following business.\n\n## Business Context\n\n- **Business Name:** {{business_name}}\n- **Website:** {{website_url}}\n- **What We Do:** {{business_description}}\n- **Target Audience:** {{target_audience}}\n- **Seed Keywords / Core Topics:**\n{{seed_keywords}}\n- **Competitors:**\n{{competitors}}\n- **Existing Content:**\n{{existing_content}}\n- **Business Priorities:** {{business_priorities}}\n\n## Planning Parameters\n\n- **Publishing Cadence:** {{publishing_cadence}}\n- **Planning Horizon:** {{planning_horizon}} weeks\n\n---\n\nFollow your full strategy framework (Steps 2–6):\n\n1. Build a **topical authority map** with pillar, cluster, and long-tail supporting content for each seed keyword area\n2. Perform **content gap analysis** using existing content vs competitor landscape\n3. Map **search intent** for each priority keyword (informational / commercial / transactional / navigational) with appropriate content format\n4. **Prioritize** content ideas using the quick wins / big bets / fill-ins / avoid matrix\n5. Create a **week-by-week content calendar** for the full planning horizon matching the publishing cadence\n6. Include an **internal linking plan** connecting pillars to clusters\n7. Define **success metrics** (traffic, rankings, production KPIs)\n\nDeliver the strategy in the exact output format from your instructions."
+  }
+}

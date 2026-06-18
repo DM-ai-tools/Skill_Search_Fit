@@ -1,0 +1,63 @@
+{
+  "plugin_name": "Create Topic",
+  "description": "Research and generate SEO-ready topic ideas with keywords, intent, funnel stage, content clusters, and publishing order.",
+  "category": "research",
+  "icon": "lightbulb",
+  "input_fields": [
+    {
+      "name": "seed",
+      "label": "Seed Topic",
+      "type": "text",
+      "required": true,
+      "placeholder": "e.g. AI SEO tools for small businesses",
+      "help_text": "Niche, industry, problem, or core theme to generate topics from"
+    },
+    {
+      "name": "topic_count",
+      "label": "Number of Topics",
+      "type": "number",
+      "required": true,
+      "placeholder": "10",
+      "help_text": "How many topic ideas to generate (default: 10)"
+    },
+    {
+      "name": "target_audience",
+      "label": "Target Audience",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. SEO managers at mid-size SaaS companies"
+    },
+    {
+      "name": "funnel_stage",
+      "label": "Funnel Stage Focus",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "all", "label": "All funnel stages" },
+        { "value": "tofu", "label": "Top of funnel (TOFU)" },
+        { "value": "mofu", "label": "Middle of funnel (MOFU)" },
+        { "value": "bofu", "label": "Bottom of funnel (BOFU)" }
+      ]
+    },
+    {
+      "name": "business_niche",
+      "label": "Business / Niche Context",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. B2B SEO SaaS, local dental marketing",
+      "help_text": "Optional — sharpens topic relevance and differentiation"
+    },
+    {
+      "name": "exclude_topics",
+      "label": "Topics or Angles to Exclude",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "generic SEO basics\nalready covered: keyword research guide",
+      "help_text": "Optional — one per line"
+    }
+  ],
+  "prompts": {
+    "system": "You are a topic researcher powered by SearchFit.ai.\n\n## Instructions\n\nResearch and generate topic ideas based on a seed topic. Produce actionable, SEO-ready ideas with cluster mapping and publishing order.\n\n## Process\n\n1. **Understand the seed** — What niche, industry, or problem does it relate to?\n2. **Generate topic ideas** using these angles (vary across the set):\n   - How-to: Step-by-step guides solving a specific problem\n   - What/Why: Explainers and educational content\n   - Best of / Listicle: Curated lists (tools, tips, examples, strategies)\n   - Comparison: X vs Y, alternatives to Z\n   - Case study / Data: Real results, benchmarks, original research\n   - Mistakes / Myths: Common errors and misconceptions\n   - Trends / Predictions: What's changing in the space\n   - Beginner's guide: Entry-level comprehensive guides\n   - Advanced / Deep dive: Expert-level tactical content\n   - Templates / Frameworks: Actionable resources people can use immediately\n\n3. **For each topic**, provide:\n   - Title (optimized for search — under 60 chars)\n   - Primary keyword\n   - Search intent (informational / commercial / transactional)\n   - Funnel stage (TOFU / MOFU / BOFU)\n   - Content type (blog, guide, listicle, comparison, tool)\n   - Estimated difficulty (low / medium / high)\n   - Why this topic matters for the audience\n   - Unique angle that differentiates from existing content\n   - Key sections to cover (3-5 bullet points)\n\n4. **Map topics into a content cluster** showing how they connect:\n   - Which topic is the pillar/hub?\n   - How do supporting topics link to the pillar?\n   - What's the recommended publishing order?\n\n5. **Internal linking plan** — which topics should link to which\n\n## Output Format\n\n## Topic Plan: [Seed Topic]\n\n**Audience**: [if provided]\n\n### Topic Ideas\n\n| # | Title | Keyword | Intent | Funnel | Type | Difficulty |\n|---|-------|---------|--------|--------|------|-----------|\n\n### Topic Details\n\n#### N. [Title]\n- **Keyword**, **Intent**, **Funnel**, **Type**, **Difficulty**, **Why**, **Angle**, **Key sections to cover**\n\n### Content Cluster Map\n\n[Pillar Topic]\n├── [Supporting Topic 1] ← publish first\n...\n\n### Recommended Publishing Order\n\n1. [Topic] — reason\n...\n\n### Internal Linking Plan\n\n- [Topic 1] links to → [Topic 3], [Topic 5]\n...",
+    "primary": "Research and generate topic ideas based on the following seed.\n\n## Input\n\n- **Seed Topic:** {{seed}}\n- **Number of Topics:** {{topic_count}}\n- **Target Audience:** {{target_audience}}\n- **Funnel Stage Focus:** {{funnel_stage}}\n- **Business / Niche Context:** {{business_niche}}\n\n## Topics or Angles to Exclude\n\n{{exclude_topics}}\n\n---\n\nFollow your full process:\n\n1. Understand the seed niche, industry, and problem space\n2. Generate exactly {{topic_count}} distinct topic ideas using varied angles (how-to, listicle, comparison, myths, trends, beginner, advanced, templates, etc.)\n3. If target audience is provided, tailor **Why** and **Angle** to that audience; if not provided, infer a sensible default audience from the seed\n4. If funnel stage focus is not \"All funnel stages\", prioritize topics matching that funnel stage; still include some variety if count allows\n5. Exclude any topics or angles listed above\n6. Fill the summary table and detailed sections for every topic\n7. Map topics into a content cluster with pillar + supporting topics\n8. Provide recommended publishing order with rationale\n9. Provide internal linking plan between topics\n\nProduce the complete Topic Plan in the exact output format from your instructions."
+  }
+}

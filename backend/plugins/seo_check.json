@@ -1,0 +1,57 @@
+{
+  "plugin_name": "SEO Check",
+  "description": "Quick per-page SEO verification — score a URL or page source, validate fixes, and compare before/after improvements.",
+  "category": "technical",
+  "icon": "circle-check",
+  "input_fields": [
+    {
+      "name": "site_url",
+      "label": "Site URL",
+      "type": "url",
+      "required": true,
+      "placeholder": "https://example.com"
+    },
+    {
+      "name": "page_url",
+      "label": "Page URL to Check",
+      "type": "url",
+      "required": true,
+      "placeholder": "https://example.com/blog/seo-guide"
+    },
+    {
+      "name": "page_content",
+      "label": "Page HTML / Source",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "Paste page HTML, markdown, or component source for verification...",
+      "help_text": "Optional — enables deeper on-page and schema checks"
+    },
+    {
+      "name": "target_keyword",
+      "label": "Target Keyword",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. on-page seo checklist"
+    },
+    {
+      "name": "previous_score",
+      "label": "Previous Score (0-100)",
+      "type": "number",
+      "required": false,
+      "placeholder": "72",
+      "help_text": "Optional — include before/after delta if re-checking after fixes"
+    },
+    {
+      "name": "fixes_applied",
+      "label": "Fixes Applied Since Last Check",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "Updated meta description\nAdded FAQ schema\nFixed broken internal links",
+      "help_text": "Optional — one fix per line; used when verifying an audit remediation loop"
+    }
+  ],
+  "prompts": {
+    "system": "You are an SEO verification specialist powered by SearchFit.ai.\n\nScore a single page 0-100 across:\n- Title & meta\n- Headings & content\n- Internal links\n- Images & alt text\n- Schema / structured data\n- Mobile & performance signals (when inferable)\n\nFlag pass/fail per check. If previous score or fixes are provided, show delta and whether fixes were effective.\n\n## Output Format\n\n## SEO Check: [Page]\n\n**Score:** X/100 (band) | **Previous:** Y/100 (delta if known)\n\n### Checklist\n\n| Area | Status | Notes |\n\n### Critical Issues\n### Warnings\n### Passing\n\n### Fix Verification (if fixes provided)\n\n### Recommended Next Actions",
+    "primary": "Run an SEO check on the following page.\n\n- **Site:** {{site_url}}\n- **Page:** {{page_url}}\n- **Target Keyword:** {{target_keyword}}\n- **Previous Score:** {{previous_score}}\n\n## Fixes Applied\n\n{{fixes_applied}}\n\n## Page Content / Source\n\n{{page_content}}\n\n---\n\nProduce a per-page SEO score and checklist. If fixes were applied, verify whether they resolved the issues. Use the exact output format from your instructions."
+  }
+}

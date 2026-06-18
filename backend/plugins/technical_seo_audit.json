@@ -1,0 +1,111 @@
+{
+  "plugin_name": "Technical SEO",
+  "deprecated_names": ["Technical SEO Audit"],
+  "description": "Diagnose crawlability, indexation, Core Web Vitals, mobile, security, and structured data issues blocking search engine performance.",
+  "category": "technical",
+  "icon": "gauge",
+  "input_fields": [
+    {
+      "name": "audit_type",
+      "label": "Audit Type",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "live_website", "label": "Live Website" },
+        { "value": "codebase", "label": "Codebase / Project Files" },
+        { "value": "hybrid", "label": "Hybrid (Live + Codebase)" }
+      ]
+    },
+    {
+      "name": "site_url",
+      "label": "Site URL",
+      "type": "url",
+      "required": true,
+      "placeholder": "https://example.com"
+    },
+    {
+      "name": "site_name",
+      "label": "Site / Project Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "tech_stack",
+      "label": "Tech Stack",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "nextjs", "label": "Next.js / React" },
+        { "value": "react_spa", "label": "React SPA (Vite, CRA)" },
+        { "value": "wordpress", "label": "WordPress" },
+        { "value": "static", "label": "Static Site (HTML, Astro, etc.)" },
+        { "value": "other", "label": "Other / Unknown" }
+      ],
+      "help_text": "Enables stack-specific checks (e.g. Server Components, next/image)"
+    },
+    {
+      "name": "sitemap_url",
+      "label": "Sitemap URL",
+      "type": "url",
+      "required": false,
+      "placeholder": "https://example.com/sitemap.xml"
+    },
+    {
+      "name": "robots_txt_content",
+      "label": "robots.txt Content",
+      "type": "textarea",
+      "required": false,
+      "help_text": "Paste robots.txt for crawlability analysis"
+    },
+    {
+      "name": "pages_to_audit",
+      "label": "Key Pages / URLs",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "https://example.com/\nhttps://example.com/pricing\nhttps://example.com/blog",
+      "help_text": "Important pages to audit — one per line"
+    },
+    {
+      "name": "codebase_content",
+      "label": "Codebase / Config Files",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "Paste next.config.js, middleware.ts, robots.ts, sitemap config, layout.tsx...",
+      "help_text": "For codebase/hybrid audits — config, routing, and component source"
+    },
+    {
+      "name": "core_web_vitals",
+      "label": "Core Web Vitals Data",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "LCP: 3.2s\nINP: 180ms\nCLS: 0.08\n(Tfrom PageSpeed Insights or Search Console)",
+      "help_text": "Optional — paste CWV metrics if available"
+    },
+    {
+      "name": "http_headers_sample",
+      "label": "HTTP Headers Sample",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "Strict-Transport-Security: ...\nX-Robots-Tag: ...\nCache-Control: ...",
+      "help_text": "Optional — response headers from key pages"
+    },
+    {
+      "name": "multi_language",
+      "label": "Multi-language / International Site",
+      "type": "checkbox",
+      "required": false,
+      "help_text": "Include hreflang and international SEO checks"
+    },
+    {
+      "name": "known_issues",
+      "label": "Known Issues",
+      "type": "textarea",
+      "required": false,
+      "help_text": "Optional — issues you've already noticed (redirect chains, slow LCP, etc.)"
+    }
+  ],
+  "prompts": {
+    "system": "You are a technical SEO specialist powered by SearchFit.ai. Diagnose and fix technical issues preventing search engines from crawling, indexing, and ranking a website.\n\n## Technical SEO Checklist\n\n1. **Crawlability** — robots.txt, XML sitemap, crawl directives, canonicals, meta robots, X-Robots-Tag\n2. **Indexation** — status codes (200/301/410/5xx), redirect chains, duplicate content, URL parameters, thin pages\n3. **Performance** — Core Web Vitals (LCP <2.5s, INP <200ms, CLS <0.1), image optimization, minification, TTFB, CDN, HTTP/2\n4. **Mobile** — viewport, touch targets, font sizes, no interstitials\n5. **Security** — HTTPS, HSTS, no mixed content, no exposed sensitive files\n6. **Structured Data** — JSON-LD validation, correct types\n7. **International SEO** (if applicable) — hreflang, lang attributes\n8. **URL Structure** — clean URLs, depth, hyphens, lowercase\n\n## Next.js Specific (when applicable)\n\nServer Components, next/image, dynamic imports, bundle size, prefetching\n\n## Output Format\n\n## Technical SEO Audit Report\n\n**Site**, **Overall Score** 0-100\n\n### Crawlability: [score]/100\n### Indexation: [score]/100\n### Performance: [score]/100\n### Mobile: [score]/100\n### Security: [score]/100\n\n### Priority Fixes\n1. **[Critical]** [Issue] — [How to fix]\n2. **[High]** ...\n3. **[Medium]** ...",
+    "primary": "Run a technical SEO audit for the following site.\n\n## Configuration\n\n- **Audit Type:** {{audit_type}}\n- **Site URL:** {{site_url}}\n- **Site Name:** {{site_name}}\n- **Tech Stack:** {{tech_stack}}\n- **Sitemap URL:** {{sitemap_url}}\n- **Multi-language Site:** {{multi_language}}\n\n## robots.txt\n\n{{robots_txt_content}}\n\n## Key Pages\n\n{{pages_to_audit}}\n\n## Codebase / Config Files\n\n{{codebase_content}}\n\n## Core Web Vitals\n\n{{core_web_vitals}}\n\n## HTTP Headers\n\n{{http_headers_sample}}\n\n## Known Issues\n\n{{known_issues}}\n\n---\n\nAudit all 8 technical SEO areas from your checklist. Apply **stack-specific checks** for {{tech_stack}} (especially Next.js: Server Components, next/image, bundle analysis).\n\nIf **multi_language** is checked, include international SEO section with hreflang analysis.\n\nFor each category, assign a **score out of 100** with specific findings referencing URLs or files.\n\nCalculate an **Overall Score** and list **Priority Fixes** ranked Critical → High → Medium with actionable fix instructions.\n\nNote limitations if live HTTP fetching is not possible — infer from provided configs and content.\n\nProduce the complete Technical SEO Audit Report in the exact output format from your instructions."
+  }
+}

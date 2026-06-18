@@ -1,0 +1,27 @@
+INFO:     127.0.0.1:52518 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52519 - "GET /api/v1/users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52520 - "POST /api/v1/projects HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:52521 - "POST /api/v1/projects HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:52522 - "POST /api/v1/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52523 - "GET /api/v1/projects/26752ce9-4d1f-4d2b-b10a-a1ecf441eeab HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52524 - "PATCH /api/v1/projects/26752ce9-4d1f-4d2b-b10a-a1ecf441eeab HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52525 - "DELETE /api/v1/projects/26752ce9-4d1f-4d2b-b10a-a1ecf441eeab HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52526 - "GET /api/v1/plugins HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52527 - "GET /api/v1/pipelines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52528 - "GET /api/v1/admin/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52529 - "GET /api/v1/admin/users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52530 - "GET /api/v1/admin/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52531 - "GET /api/v1/admin/plugins HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52532 - "POST /api/v1/reports HTTP/1.1" 201 Created
+INFO:     127.0.0.1:52533 - "GET /api/v1/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52534 - "GET /api/v1/reports/a0db4352-f774-4b29-90a6-68543d6aaae3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52535 - "POST /api/v1/reports/a0db4352-f774-4b29-90a6-68543d6aaae3/payload HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:52536 - "POST /api/v1/reports/a0db4352-f774-4b29-90a6-68543d6aaae3/publish HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:52537 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52538 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52539 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52540 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52541 - "POST /api/v1/auth/login HTTP/1.1" 429 Too Many Requests
+INFO:     127.0.0.1:52542 - "POST /api/v1/auth/login HTTP/1.1" 429 Too Many Requests
+INFO:     127.0.0.1:52543 - "POST /api/v1/auth/logout HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52544 - "GET /api/v1/users/me HTTP/1.1" 401 Unauthorized

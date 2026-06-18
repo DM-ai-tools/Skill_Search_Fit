@@ -1,0 +1,164 @@
+{
+  "plugin_name": "Schema Markup",
+  "deprecated_names": ["Generate Schema Markup", "Generate Schema", "Schema Markup Generator"],
+  "description": "Analyze page content and generate valid JSON-LD structured data with framework-specific integration code and rich result guidance.",
+  "category": "technical",
+  "icon": "code",
+  "input_fields": [
+    {
+      "name": "source_file",
+      "label": "Source File / Page Reference",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. app/blog/[slug]/page.tsx or about.html",
+      "help_text": "Optional — file path or page reference for context (paste page details below if no file)"
+    },
+    {
+      "name": "page_url",
+      "label": "Page URL",
+      "type": "url",
+      "required": true,
+      "placeholder": "https://example.com/blog/seo-guide",
+      "help_text": "Absolute URL of the page (required for schema URLs)"
+    },
+    {
+      "name": "primary_schema_type",
+      "label": "Schema Type",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "auto", "label": "Auto-detect from content" },
+        { "value": "organization", "label": "Organization" },
+        { "value": "article", "label": "Article / BlogPosting" },
+        { "value": "product", "label": "Product" },
+        { "value": "faq", "label": "FAQPage" },
+        { "value": "howto", "label": "HowTo" },
+        { "value": "breadcrumb", "label": "BreadcrumbList" },
+        { "value": "local_business", "label": "LocalBusiness" },
+        { "value": "software_application", "label": "SoftwareApplication" },
+        { "value": "video", "label": "VideoObject" },
+        { "value": "review", "label": "Review" }
+      ]
+    },
+    {
+      "name": "additional_schemas",
+      "label": "Additional Schema Types",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "breadcrumb, organization",
+      "help_text": "Optional — comma-separated types to combine (e.g. Article + BreadcrumbList + Organization)"
+    },
+    {
+      "name": "page_content",
+      "label": "Page Content / Details",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Paste page HTML, markdown, component code, or key page details to extract schema data from...",
+      "help_text": "Primary source for analysis — never fabricate data not present here"
+    },
+    {
+      "name": "page_title",
+      "label": "Page Title / Headline",
+      "type": "text",
+      "required": false
+    },
+    {
+      "name": "meta_description",
+      "label": "Meta Description",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "name": "author_name",
+      "label": "Author Name",
+      "type": "text",
+      "required": false,
+      "help_text": "For Article / BlogPosting schema"
+    },
+    {
+      "name": "date_published",
+      "label": "Date Published",
+      "type": "text",
+      "required": false,
+      "placeholder": "2025-06-01",
+      "help_text": "ISO 8601 format preferred (e.g. 2025-06-01 or 2025-06-01T10:00:00Z)"
+    },
+    {
+      "name": "date_modified",
+      "label": "Date Modified",
+      "type": "text",
+      "required": false,
+      "placeholder": "2025-06-10"
+    },
+    {
+      "name": "image_urls",
+      "label": "Image URLs",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "https://example.com/images/hero.jpg\nhttps://example.com/images/og.png",
+      "help_text": "One absolute URL per line — hero, OG, product images, etc."
+    },
+    {
+      "name": "organization_name",
+      "label": "Organization / Brand Name",
+      "type": "text",
+      "required": false,
+      "help_text": "For Organization, Article publisher, Product brand"
+    },
+    {
+      "name": "logo_url",
+      "label": "Logo URL",
+      "type": "url",
+      "required": false,
+      "placeholder": "https://example.com/logo.png"
+    },
+    {
+      "name": "faq_content",
+      "label": "FAQ Questions & Answers",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "Q: What is SEO?\nA: SEO is search engine optimization...\n\nQ: How long does it take?\nA: Typically 3-6 months...",
+      "help_text": "For FAQPage — Q/A pairs (one pair per block)"
+    },
+    {
+      "name": "howto_steps",
+      "label": "HowTo Steps",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "1. Step name — Step description\n2. Step name — Step description",
+      "help_text": "For HowTo schema — numbered steps"
+    },
+    {
+      "name": "breadcrumbs",
+      "label": "Breadcrumb Trail",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "Home | https://example.com\nBlog | https://example.com/blog\nArticle Title | https://example.com/blog/post",
+      "help_text": "Name | URL per line for BreadcrumbList"
+    },
+    {
+      "name": "product_info",
+      "label": "Product Details",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "Price: 49.99 USD\nBrand: ExampleCo\nRating: 4.8 (120 reviews)\nAvailability: InStock",
+      "help_text": "For Product schema — price, currency, brand, ratings"
+    },
+    {
+      "name": "integration_framework",
+      "label": "Integration Target",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "nextjs", "label": "Next.js (generateMetadata / Script)" },
+        { "value": "react", "label": "React (Head / dangerouslySetInnerHTML)" },
+        { "value": "html", "label": "HTML (script tag in head/body)" },
+        { "value": "raw_json", "label": "Raw JSON-LD only" }
+      ]
+    }
+  ],
+  "prompts": {
+    "system": "You are generating structured data powered by SearchFit.ai.\n\n## Instructions\n\nAnalyze page content and generate valid JSON-LD schema markup with framework-specific integration code.\n\n## Process\n\n1. **Analyze the page** to extract:\n   - Page type (article, product, FAQ, how-to, etc.)\n   - Title, description, author\n   - Dates (published, modified)\n   - Images\n   - FAQ questions (if any)\n   - Steps (if how-to content)\n   - Pricing (if product)\n\n2. **Generate valid JSON-LD** with all required and recommended properties from provided data only — NEVER fabricate missing values\n\n3. **Provide integration code** for the user's framework:\n   - Next.js: `generateMetadata()` or `<script>` in component / next/script\n   - React: Head component or `dangerouslySetInnerHTML`\n   - HTML: `<script type=\"application/ld+json\">`\n\n## Validation Rules\n\n- All required properties populated from provided data\n- URLs must be absolute\n- Dates in ISO 8601 format\n- No empty string values — omit optional fields instead\n- Image URLs must be crawlable\n- @type must match actual page content\n\n## Output Format\n\n## Schema Markup: [Type]\n\n### JSON-LD\n```json\n{\n  \"@context\": \"https://schema.org\",\n  \"@type\": \"...\",\n  ...\n}\n```\n\n### Integration\n[Framework-specific code snippet]\n\n### Rich Result Eligibility\n- [What rich results this schema enables in Google]\n\n### Validation\nTest at: https://search.google.com/test/rich-results",
+    "primary": "Generate structured data schema markup for the following page.\n\n## Source\n\n- **Source File / Reference:** {{source_file}}\n- **Page URL:** {{page_url}}\n- **Schema Type:** {{primary_schema_type}}\n- **Additional Schemas:** {{additional_schemas}}\n- **Integration Target:** {{integration_framework}}\n\nIf source file is not provided, analyze the page content and details below.\nIf schema type is \"Auto-detect from content\", choose the best primary @type based on page content; still add complementary schemas (e.g. BreadcrumbList, Organization) when appropriate.\n\n## Page Metadata\n\n- **Title / Headline:** {{page_title}}\n- **Meta Description:** {{meta_description}}\n- **Author:** {{author_name}}\n- **Date Published:** {{date_published}}\n- **Date Modified:** {{date_modified}}\n- **Organization / Brand:** {{organization_name}}\n- **Logo URL:** {{logo_url}}\n\n## Images\n\n{{image_urls}}\n\n## Page Content (primary analysis source — do not invent fields)\n\n{{page_content}}\n\n## Structured Inputs\n\n**FAQ Q&A:**\n{{faq_content}}\n\n**HowTo Steps:**\n{{howto_steps}}\n\n**Breadcrumbs:**\n{{breadcrumbs}}\n\n**Product Details:**\n{{product_info}}\n\n---\n\nFollow your full process:\n\n1. Analyze page type, title, description, author, dates, images, FAQ, steps, and pricing from the inputs\n2. Determine schema type(s) — use specified type or auto-detect; combine with additional schemas when relevant\n3. Generate **valid JSON-LD** with required and recommended properties (omit unknown fields, never fabricate)\n4. Provide **framework-specific integration code** for {{integration_framework}}\n5. List **rich result eligibility** (what Google rich results this enables)\n6. Include validation link: https://search.google.com/test/rich-results\n\nIf data is insufficient for a required field, note what's missing rather than fabricating values.\n\nProduce output in the exact format from your instructions."
+  }
+}

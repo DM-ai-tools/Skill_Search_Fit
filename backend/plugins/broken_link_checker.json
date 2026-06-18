@@ -1,0 +1,79 @@
+{
+  "plugin_name": "Broken Links",
+  "deprecated_names": ["Broken Link Checker"],
+  "description": "Find, diagnose, and fix broken internal, external, and backlink 404s that hurt SEO and user experience.",
+  "category": "technical",
+  "icon": "link",
+  "input_fields": [
+    {
+      "name": "audit_type",
+      "label": "Audit Type",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "live_website", "label": "Live Website Crawl" },
+        { "value": "codebase", "label": "Codebase / Project Scan" }
+      ],
+      "help_text": "Live crawl checks HTTP status codes. Codebase scan analyzes link references in your project files."
+    },
+    {
+      "name": "site_url",
+      "label": "Site URL",
+      "type": "url",
+      "required": true,
+      "placeholder": "https://example.com",
+      "help_text": "Homepage or site root. For codebase audits, use your staging or production URL if available."
+    },
+    {
+      "name": "sitemap_url",
+      "label": "Sitemap URL",
+      "type": "url",
+      "required": false,
+      "placeholder": "https://example.com/sitemap.xml",
+      "help_text": "Optional — improves crawl coverage for live website audits"
+    },
+    {
+      "name": "max_pages",
+      "label": "Max Pages to Scan",
+      "type": "number",
+      "required": false,
+      "placeholder": "100",
+      "help_text": "Crawl limit for live website audits (default: 100)"
+    },
+    {
+      "name": "check_external_links",
+      "label": "Check External Links",
+      "type": "checkbox",
+      "required": false,
+      "help_text": "Verify outbound links to other websites resolve correctly"
+    },
+    {
+      "name": "codebase_content",
+      "label": "Codebase Content / Link Inventory",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "Paste HTML, Markdown, route configs, or a list of internal links to analyze...",
+      "help_text": "Required for codebase scans — paste relevant files, routes, or link references"
+    },
+    {
+      "name": "defined_routes",
+      "label": "Defined Routes / Pages",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "/\n/about\n/blog\n/products",
+      "help_text": "For codebase scans — list all valid routes (one per line) to cross-reference links against"
+    },
+    {
+      "name": "existing_redirects",
+      "label": "Existing Redirects",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "/old-page → /new-page\n/legacy → /current",
+      "help_text": "Optional — known redirects to check for chains and conflicts"
+    }
+  ],
+  "prompts": {
+    "system": "You are a broken link specialist powered by SearchFit.ai. Find, diagnose, and fix broken links that hurt SEO and user experience.\n\n## Why Broken Links Matter\n\n- SEO damage: Google crawls broken links and downgrades page quality signals\n- Wasted link equity: Backlinks pointing to 404 pages lose all ranking power\n- Poor UX: Users hitting dead ends bounce and lose trust\n- Crawl budget waste: Search engines spend time on broken URLs instead of good pages\n\n## Types of Broken Links\n\n**Internal Broken Links** — renamed/moved pages without redirects, deleted content, typos, case sensitivity.\n**External Broken Links** — outbound links to dead external sites.\n**Backlink 404s** — external sites linking to your removed pages (fix with 301 redirects).\n\n## Audit Process\n\n### For Codebases\n- Scan link references: HTML href, React Link, Markdown links, CSS url(), redirect configs\n- Cross-reference with defined routes\n- Flag hardcoded URLs, trailing slash issues, case mismatches, bad hash fragments\n\n### For Live Websites\n- Crawl from homepage/sitemap\n- Check HTTP status: 200 OK, 301/302 redirects, 404 broken, 410 gone, 500 errors, timeouts\n- Flag redirect chains with 3+ hops\n- Verify external links\n\n## Fix Strategies\n\n- Moved pages: 301 redirects\n- Deleted pages: redirect to closest relevant page or remove link\n- External dead links: replace or remove\n- Redirect chains: point links directly to final destination\n- Typos: fix the URL\n\n## Output Format\n\nUse this exact structure:\n\n## Broken Link Report\n\n**Pages Scanned**: [count]\n**Total Links Checked**: [count]\n**Broken Links Found**: [count]\n**Redirect Chains**: [count]\n\n### Internal Broken Links\n| Source Page | Broken URL | Status | Suggested Fix |\n|------------|-----------|--------|---------------|\n\n### External Broken Links\n| Source Page | Broken URL | Status | Suggested Fix |\n|------------|-----------|--------|---------------|\n\n### Redirect Chains (3+ hops)\n| Start URL | Chain | Final URL |\n|-----------|-------|-----------|\n\n### Quick Fixes\n1. Add these redirects:\n2. Update these link references:\n3. Remove these dead external links:\n\nInclude prevention tips at the end.",
+    "primary": "Run a broken link audit using the following inputs.\n\n## Audit Configuration\n\n- **Audit Type:** {{audit_type}}\n- **Site URL:** {{site_url}}\n- **Sitemap URL:** {{sitemap_url}}\n- **Max Pages:** {{max_pages}}\n- **Check External Links:** {{check_external_links}}\n\n## Codebase Scan Data\n\n**Defined Routes / Pages:**\n{{defined_routes}}\n\n**Codebase Content / Link Inventory:**\n{{codebase_content}}\n\n**Existing Redirects:**\n{{existing_redirects}}\n\n---\n\nIf audit type is **live website**, simulate a crawl from the site URL (and sitemap if provided), analyze likely broken links, redirect chains, and external link issues based on the site structure and common patterns. Note limitations if you cannot actually HTTP-fetch URLs.\n\nIf audit type is **codebase**, analyze the pasted codebase content and cross-reference all link targets against the defined routes list. Flag internal broken links, external links that appear dead, and redirect chain issues from existing redirects.\n\nProduce the complete Broken Link Report in the exact output format from your instructions. Be specific with suggested fixes (redirect rules, file references, and corrected URLs)."
+  }
+}

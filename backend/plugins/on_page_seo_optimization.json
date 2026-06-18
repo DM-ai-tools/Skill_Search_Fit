@@ -1,0 +1,106 @@
+{
+  "plugin_name": "On-Page SEO",
+  "deprecated_names": ["On-Page SEO Optimization"],
+  "description": "Analyze and optimize individual pages for title tags, meta descriptions, headings, content, schema, and internal links.",
+  "category": "content",
+  "icon": "scan-search",
+  "input_fields": [
+    {
+      "name": "target_keyword",
+      "label": "Target Keyword",
+      "type": "text",
+      "required": true,
+      "placeholder": "e.g. on-page seo checklist"
+    },
+    {
+      "name": "search_intent",
+      "label": "Search Intent",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "informational", "label": "Informational" },
+        { "value": "commercial", "label": "Commercial Investigation" },
+        { "value": "transactional", "label": "Transactional" },
+        { "value": "navigational", "label": "Navigational" }
+      ]
+    },
+    {
+      "name": "target_audience",
+      "label": "Target Audience",
+      "type": "text",
+      "required": true,
+      "placeholder": "e.g. SEO managers optimizing blog content"
+    },
+    {
+      "name": "page_type",
+      "label": "Page Type",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "blog_post", "label": "Blog Post" },
+        { "value": "landing_page", "label": "Landing Page" },
+        { "value": "product_page", "label": "Product Page" },
+        { "value": "category_page", "label": "Category Page" },
+        { "value": "homepage", "label": "Homepage" },
+        { "value": "other", "label": "Other" }
+      ]
+    },
+    {
+      "name": "page_url",
+      "label": "Page URL",
+      "type": "url",
+      "required": false,
+      "placeholder": "https://example.com/blog/on-page-seo"
+    },
+    {
+      "name": "page_content",
+      "label": "Page Content",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Paste the full page content, HTML, or markdown to analyze...",
+      "help_text": "Include body copy, headings, and any visible on-page elements"
+    },
+    {
+      "name": "current_title",
+      "label": "Current Title Tag",
+      "type": "text",
+      "required": false,
+      "placeholder": "Current <title> if known"
+    },
+    {
+      "name": "current_meta_description",
+      "label": "Current Meta Description",
+      "type": "textarea",
+      "required": false,
+      "rows": 2
+    },
+    {
+      "name": "current_headings",
+      "label": "Current Heading Structure",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "H1: Main title\nH2: Section one\nH2: Section two",
+      "help_text": "Optional — paste H1/H2/H3 outline if separate from page content"
+    },
+    {
+      "name": "secondary_keywords",
+      "label": "Secondary / LSI Keywords",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "related term 1\nrelated term 2",
+      "help_text": "Related keywords to weave in naturally"
+    },
+    {
+      "name": "internal_link_targets",
+      "label": "Available Internal Link Targets",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "/features — product features\n/blog/seo-guide — SEO guide",
+      "help_text": "Site pages this page can link to"
+    }
+  ],
+  "prompts": {
+    "system": "You are an on-page SEO specialist powered by SearchFit.ai. Optimize individual pages for maximum search visibility.\n\n## Process\n\n### Step 1: Use provided target keyword, intent, audience\n### Step 2: Analyze current page — title tag (50-60 chars), meta description (150-160 chars), URL/slug, heading structure (one H1, logical H2s), content quality, images/alt text, internal links (3-5 min), schema markup\n### Step 3: Provide exact fixes — rewritten titles, meta descriptions, heading structure, content gaps, JSON-LD schema, internal link suggestions\n\n## Scoring\n\nRate Current Score 0-100 and Optimized Score 0-100 (estimated after fixes)\n\n## Output Format\n\n## On-Page SEO Report: [Page Name]\n\n**Target Keyword**, **Current Score**, **Optimized Score**\n\n### Fixes Applied / Recommended\n\n#### Title Tag (Before / After)\n#### Meta Description (Before / After)\n#### URL / Slug recommendations\n#### Headings (recommended structure)\n#### Content Gaps\n#### Image & Alt Text recommendations\n#### Schema Markup (JSON-LD code block)\n#### Internal Linking (suggested links with anchor text)\n\n## Tips: no keyword stuffing, write for humans, match intent depth, featured snippet opportunities, E-E-A-T signals",
+    "primary": "Perform a complete on-page SEO audit and optimization for the following page.\n\n## Target\n\n- **Target Keyword:** {{target_keyword}}\n- **Search Intent:** {{search_intent}}\n- **Target Audience:** {{target_audience}}\n- **Page Type:** {{page_type}}\n- **Page URL:** {{page_url}}\n\n## Secondary / LSI Keywords\n\n{{secondary_keywords}}\n\n## Current On-Page Elements\n\n**Title Tag:** {{current_title}}\n\n**Meta Description:** {{current_meta_description}}\n\n**Heading Structure:**\n{{current_headings}}\n\n## Page Content to Analyze\n\n{{page_content}}\n\n## Internal Link Targets Available\n\n{{internal_link_targets}}\n\n---\n\nAnalyze the page against all on-page SEO criteria in your instructions. Score current state 0-100 and estimate optimized score after fixes.\n\nFor each issue, provide **exact copy-paste fixes**:\n- Optimized title tag (50-60 chars, keyword near start)\n- Optimized meta description (150-160 chars with CTA)\n- URL/slug recommendation\n- Full recommended H1/H2/H3 structure\n- Content gaps and LSI keywords to add\n- Image alt text recommendations\n- Complete JSON-LD schema markup code block\n- 3-5 internal link suggestions with descriptive anchor text\n\nProduce the complete On-Page SEO Report in the exact output format from your instructions."
+  }
+}

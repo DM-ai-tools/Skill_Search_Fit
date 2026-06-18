@@ -1,0 +1,92 @@
+{
+  "plugin_name": "Internal Linking",
+  "deprecated_names": ["Internal Linking Strategy"],
+  "description": "Analyze site structure and recommend internal link improvements for better crawlability, link equity distribution, and topical authority.",
+  "category": "technical",
+  "icon": "network",
+  "input_fields": [
+    {
+      "name": "site_url",
+      "label": "Site URL",
+      "type": "url",
+      "required": true,
+      "placeholder": "https://example.com"
+    },
+    {
+      "name": "analysis_source",
+      "label": "Analysis Source",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "page_inventory", "label": "Page Inventory (manual list)" },
+        { "value": "sitemap", "label": "Sitemap + Page List" },
+        { "value": "codebase", "label": "Codebase / Route Map" }
+      ],
+      "help_text": "How you're providing site structure data"
+    },
+    {
+      "name": "sitemap_url",
+      "label": "Sitemap URL",
+      "type": "url",
+      "required": false,
+      "placeholder": "https://example.com/sitemap.xml"
+    },
+    {
+      "name": "site_type",
+      "label": "Site Type",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "blog", "label": "Blog / Content Site" },
+        { "value": "saas", "label": "SaaS / Product" },
+        { "value": "ecommerce", "label": "E-commerce" },
+        { "value": "corporate", "label": "Corporate / Marketing" },
+        { "value": "mixed", "label": "Mixed" }
+      ]
+    },
+    {
+      "name": "page_inventory",
+      "label": "Page Inventory",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "/ — Homepage (brand hub)\n/blog/seo-guide — SEO guide (informational)\n/features — Product features (commercial)\n/pricing — Pricing (transactional)",
+      "help_text": "List all pages/routes with category and topic (one per line)"
+    },
+    {
+      "name": "current_internal_links",
+      "label": "Current Internal Links",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "/blog/seo-guide → /features, /pricing (anchors: \"SEO tools\", \"see pricing\")\n/homepage → /blog, /features, /pricing",
+      "help_text": "Optional — known outgoing links and anchor text to audit"
+    },
+    {
+      "name": "priority_pages",
+      "label": "Priority Pages",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "/pricing\n/features\n/blog/flagship-guide",
+      "help_text": "Pages that should receive more link equity (one per line)"
+    },
+    {
+      "name": "topic_clusters",
+      "label": "Topic Clusters / Hub Pages",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "SEO Hub: /blog/seo-guide\n  - /blog/keyword-research\n  - /blog/on-page-seo",
+      "help_text": "Optional — planned or existing hub-and-spoke groupings"
+    },
+    {
+      "name": "codebase_routes",
+      "label": "Codebase Routes / Link References",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "Paste nav config, Link components, or route definitions from codebase",
+      "help_text": "For codebase analysis — paste relevant HTML, React routes, or nav structure"
+    }
+  ],
+  "prompts": {
+    "system": "You are an internal linking strategist powered by SearchFit.ai. Analyze site structure and recommend link improvements for better crawlability and ranking power distribution.\n\n## Why Internal Linking Matters\n\n- Helps search engines discover and index pages\n- Distributes page authority (link equity)\n- Establishes content hierarchy and topical relevance\n- Improves user navigation and reduces bounce rate\n- Signals which pages are most important\n\n## Analysis Process\n\n### Step 1: Map site structure from provided inventory\n### Step 2: Audit current links — outgoing, incoming, anchor text\n### Step 3: Identify issues: orphan pages, dead ends, over-linked pages, shallow pages (4+ clicks), poor anchor text, one-way links\n### Step 4: Recommend hub & spoke model, content clusters, link priority guidelines\n\n## Output Format\n\n## Internal Linking Report\n\n**Pages Analyzed**, **Total Internal Links**, **Average Links Per Page**\n\n### Issues Found\n- Orphan Pages (no incoming links)\n- Dead End Pages (no outgoing links)\n- Weak Anchor Text (with suggested improvements)\n- Shallow Pages (4+ clicks from homepage)\n- Over-Linked Pages (if applicable)\n\n### Recommended Link Additions (table: From Page, To Page, Anchor Text)\n\n### Content Cluster Map (hub & spoke tree)\n\n### Link Priority Plan (homepage → hubs → spokes → footer)\n\nBe specific with page paths and descriptive anchor text.",
+    "primary": "Analyze internal linking for the following site and produce a complete strategy report.\n\n## Site Context\n\n- **Site URL:** {{site_url}}\n- **Sitemap URL:** {{sitemap_url}}\n- **Analysis Source:** {{analysis_source}}\n- **Site Type:** {{site_type}}\n\n## Page Inventory\n\n{{page_inventory}}\n\n## Current Internal Links\n\n{{current_internal_links}}\n\n## Priority Pages (need more link equity)\n\n{{priority_pages}}\n\n## Topic Clusters / Hub Pages\n\n{{topic_clusters}}\n\n## Codebase Routes / Link References\n\n{{codebase_routes}}\n\n---\n\nFollow your full analysis process (Steps 1–4):\n\n1. Map the site structure from the page inventory\n2. Audit current links (infer incoming/outgoing from provided data; note gaps where data is missing)\n3. Identify all issue types: orphans, dead ends, weak anchor text, shallow pages, over-linked pages, one-way links\n4. Recommend specific link additions with descriptive keyword-rich anchor text\n5. Build a **content cluster map** using hub & spoke model\n6. Prioritize links for **priority pages** listed above\n7. Align recommendations with **site type** (e.g. SaaS: product pages from blog; e-commerce: category → product links)\n\nProduce the complete Internal Linking Report in the exact output format from your instructions."
+  }
+}

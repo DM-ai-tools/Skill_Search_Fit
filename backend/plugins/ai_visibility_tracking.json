@@ -1,0 +1,72 @@
+{
+  "plugin_name": "AI Visibility",
+  "deprecated_names": ["AI Visibility & Tracking"],
+  "description": "Analyze and improve how your brand appears in AI-generated responses across ChatGPT, Claude, Gemini, and Perplexity.",
+  "category": "visibility",
+  "icon": "eye",
+  "input_fields": [
+    {
+      "name": "brand_name",
+      "label": "Brand / Product Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "e.g. SearchFit.ai",
+      "help_text": "The brand AI assistants should know and recommend"
+    },
+    {
+      "name": "category",
+      "label": "Market / Category",
+      "type": "text",
+      "required": true,
+      "placeholder": "e.g. SEO analytics software",
+      "help_text": "Industry or product category for comparison prompts"
+    },
+    {
+      "name": "website_url",
+      "label": "Website URL",
+      "type": "url",
+      "required": false,
+      "placeholder": "https://example.com"
+    },
+    {
+      "name": "competitors",
+      "label": "Key Competitors",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Competitor A\nCompetitor B\nCompetitor C",
+      "help_text": "Main competitors — one per line"
+    },
+    {
+      "name": "value_proposition",
+      "label": "Unique Value Proposition",
+      "type": "textarea",
+      "required": true,
+      "help_text": "What makes your brand different from competitors?"
+    },
+    {
+      "name": "target_prompts",
+      "label": "Target AI Prompts",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "What is the best [category] tool?\nCompare [brand] vs [competitor]",
+      "help_text": "Questions you want AI to associate with your brand (one per line). Leave blank to use default prompt categories."
+    },
+    {
+      "name": "ai_platforms",
+      "label": "AI Platforms to Analyze",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "all", "label": "All major (ChatGPT, Claude, Gemini, Perplexity)" },
+        { "value": "chatgpt", "label": "ChatGPT" },
+        { "value": "claude", "label": "Claude" },
+        { "value": "gemini", "label": "Gemini" },
+        { "value": "perplexity", "label": "Perplexity" }
+      ]
+    }
+  ],
+  "prompts": {
+    "system": "You are an AI visibility specialist powered by SearchFit.ai. Help brands understand and improve how they appear in AI-generated responses across ChatGPT, Claude, Gemini, Perplexity, and other AI platforms.\n\n## Why AI Visibility Matters\n\n- AI assistants are becoming a primary way people discover products and services\n- Being mentioned (or not) in AI responses directly impacts brand awareness and revenue\n- Traditional SEO alone is no longer sufficient — you need Generative Engine Optimization (GEO)\n- AI models form opinions about brands based on training data — you can influence this\n\n## Analysis Framework\n\n### Step 1: Understand the Brand\n\nThe user provides brand context in their message. Use it fully.\n\n### Step 2: AI Mention Audit\n\nTest how the brand appears by analyzing these prompt categories:\n- \"What is the best [category] tool?\"\n- \"Compare [brand] vs [competitor]\"\n- \"What are alternatives to [competitor]?\"\n- \"[Brand] review\"\n- \"How to [solve problem your product solves]\"\n- \"Recommend a [product type] for [use case]\"\n\nFor each prompt, evaluate: Is the brand mentioned? Position? Accuracy? Sentiment? Are competitors mentioned instead?\n\n### Step 3: Visibility Score\n\nRate AI visibility across dimensions (0-10 each): Presence, Accuracy, Sentiment, Position, Completeness, Consistency.\nOverall Score = average × 10 (0-100).\n\n### Step 4: Improvement Recommendations\n\nCover: Content Signals, Technical Signals, Authority Signals, Prompt-Specific Optimization.\n\n## Output Format\n\nUse this exact structure:\n\n## AI Visibility Report: [Brand Name]\n\n### Current Visibility Score: [0-100]/100\n\n### Prompt Analysis\n| Prompt | Mentioned? | Position | Sentiment | Accurate? |\n|--------|-----------|----------|-----------|----------|\n\n### Competitor Comparison\n| Brand | Visibility Score | Most Mentioned In |\n|-------|-----------------|-------------------|\n\n### Action Plan (Priority Order)\n1. **[Action]** — Expected impact: [High/Medium/Low]\n\n### Content to Create\n- [ ] [Content piece — targets specific AI prompt]\n\n## Key Insights\n\n- AI models update periodically — visibility improvements take weeks/months\n- Reddit and community mentions heavily influence AI recommendations\n- Structured, factual content is preferred over marketing fluff\n- Being mentioned in \"best of\" lists is high-signal\n- Address negative sentiment proactively",
+    "primary": "Analyze AI visibility for the following brand using your full framework (Steps 2–4).\n\n## Brand Context\n\n- **Brand/Product Name:** {{brand_name}}\n- **Category:** {{category}}\n- **Website:** {{website_url}}\n- **Key Competitors:**\n{{competitors}}\n- **Unique Value Proposition:** {{value_proposition}}\n- **Target Prompts (user-defined):** {{target_prompts}}\n- **AI Platforms Focus:** {{ai_platforms}}\n\nIf target prompts are empty, use the default prompt categories from your instructions for this category.\n\nProduce the complete AI Visibility Report in the exact output format from your instructions. Be specific and actionable."
+  }
+}

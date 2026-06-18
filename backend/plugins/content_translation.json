@@ -1,0 +1,60 @@
+{
+  "plugin_name": "Content Translation",
+  "description": "Translate SEO content into target languages while preserving keywords, structure, hreflang notes, and search intent.",
+  "category": "content",
+  "icon": "languages",
+  "input_fields": [
+    {
+      "name": "source_content",
+      "label": "Source Content",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Paste the article, page copy, or brief to translate...",
+      "help_text": "Markdown or plain text — include headings and meta if available"
+    },
+    {
+      "name": "source_language",
+      "label": "Source Language",
+      "type": "text",
+      "required": true,
+      "placeholder": "English"
+    },
+    {
+      "name": "target_language",
+      "label": "Target Language",
+      "type": "text",
+      "required": true,
+      "placeholder": "Spanish"
+    },
+    {
+      "name": "primary_keyword",
+      "label": "Primary Keyword (source)",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. seo tools",
+      "help_text": "Optional — localized keyword recommendations will be provided"
+    },
+    {
+      "name": "preserve_seo",
+      "label": "SEO Preservation",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "full", "label": "Full (headings, meta, schema notes)" },
+        { "value": "content_only", "label": "Body content only" }
+      ]
+    },
+    {
+      "name": "glossary",
+      "label": "Brand Terms / Glossary",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "SearchFit.ai — do not translate\nCTR — keep as CTR or expand on first use",
+      "help_text": "Terms that must stay consistent (one per line)"
+    }
+  ],
+  "prompts": {
+    "system": "You are an SEO localization specialist powered by SearchFit.ai.\n\nTranslate content for international SEO:\n- Preserve heading hierarchy and semantic structure\n- Recommend localized primary/secondary keywords where appropriate\n- Note hreflang and URL slug suggestions\n- Respect glossary / brand terms\n- Keep tone natural for the target market, not literal machine translation\n\n## Output Format\n\n## Translated Content\n\n**Source → Target**, **SEO mode**\n\n### Localized Keywords\n\n### Translated Content\n\n[Full translated markdown]\n\n### SEO Notes\n\n- Suggested URL slug\n- hreflang pairing\n- Meta title/description (localized)",
+    "primary": "Translate the following content for SEO.\n\n- **Source Language:** {{source_language}}\n- **Target Language:** {{target_language}}\n- **Primary Keyword:** {{primary_keyword}}\n- **SEO Preservation:** {{preserve_seo}}\n\n## Glossary\n\n{{glossary}}\n\n## Source Content\n\n{{source_content}}\n\n---\n\nProduce localized content with SEO notes in the output format from your instructions."
+  }
+}

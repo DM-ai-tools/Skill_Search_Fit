@@ -1,0 +1,249 @@
+   ▲ Next.js 15.5.19
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.1.10:3001
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 2.1s
+ ○ Compiling / ...
+ ✓ Compiled / in 1227ms (635 modules)
+ GET / 200 in 1761ms
+ ✓ Compiled in 842ms (240 modules)
+ ✓ Compiled in 110ms (240 modules)
+ ✓ Compiled in 113ms (240 modules)
+ ✓ Compiled in 92ms (240 modules)
+ ✓ Compiled in 106ms (240 modules)
+ ✓ Compiled in 102ms (240 modules)
+ ✓ Compiled in 128ms (240 modules)
+ ✓ Compiled in 90ms (240 modules)
+ ✓ Compiled in 85ms (240 modules)
+ ✓ Compiled in 88ms (240 modules)
+ ✓ Compiled in 85ms (240 modules)
+ ✓ Compiled in 93ms (240 modules)
+ ✓ Compiled in 81ms (240 modules)
+ ✓ Compiled in 92ms (240 modules)
+ ✓ Compiled in 86ms (240 modules)
+ ✓ Compiled in 88ms (240 modules)
+ ✓ Compiled in 96ms (240 modules)
+ ✓ Compiled in 89ms (240 modules)
+ ✓ Compiled in 80ms (240 modules)
+ ✓ Compiled in 90ms (240 modules)
+ ✓ Compiled in 85ms (240 modules)
+ ✓ Compiled in 89ms (240 modules)
+ ✓ Compiled in 78ms (240 modules)
+ ✓ Compiled in 89ms (240 modules)
+ ✓ Compiled in 83ms (240 modules)
+ ✓ Compiled in 96ms (240 modules)
+ ✓ Compiled in 77ms (240 modules)
+ ✓ Compiled in 106ms (240 modules)
+ ✓ Compiled in 82ms (240 modules)
+ ✓ Compiled in 85ms (240 modules)
+ ✓ Compiled in 80ms (240 modules)
+ ✓ Compiled in 105ms (240 modules)
+ ✓ Compiled in 84ms (240 modules)
+ ✓ Compiled in 91ms (240 modules)
+ ✓ Compiled in 80ms (240 modules)
+ ✓ Compiled in 89ms (240 modules)
+ ✓ Compiled in 86ms (240 modules)
+ ✓ Compiled in 86ms (240 modules)
+ ✓ Compiled in 86ms (240 modules)
+ ✓ Compiled in 84ms (240 modules)
+ ✓ Compiled in 78ms (240 modules)
+ ✓ Compiled in 87ms (240 modules)
+ ✓ Compiled in 81ms (240 modules)
+ ✓ Compiled in 82ms (240 modules)
+ ✓ Compiled in 80ms (240 modules)
+ ✓ Compiled in 91ms (240 modules)
+ ✓ Compiled in 79ms (240 modules)
+ ✓ Compiled in 84ms (240 modules)
+ ✓ Compiled in 94ms (240 modules)
+ ✓ Compiled in 88ms (240 modules)
+ ✓ Compiled in 79ms (240 modules)
+ ✓ Compiled in 110ms (240 modules)
+ ✓ Compiled in 90ms (240 modules)
+ ✓ Compiled in 94ms (240 modules)
+ ✓ Compiled in 91ms (240 modules)
+ ✓ Compiled in 101ms (240 modules)
+ ✓ Compiled in 117ms (240 modules)
+ ✓ Compiled in 118ms (240 modules)
+ ✓ Compiled in 103ms (240 modules)
+ ✓ Compiled in 102ms (240 modules)
+ ✓ Compiled in 85ms (240 modules)
+ ✓ Compiled in 80ms (240 modules)
+ ✓ Compiled in 97ms (240 modules)
+ ✓ Compiled in 79ms (240 modules)
+ ✓ Compiled in 99ms (240 modules)
+ ✓ Compiled in 94ms (240 modules)
+ ✓ Compiled in 95ms (240 modules)
+ ✓ Compiled in 114ms (240 modules)
+ ✓ Compiled in 96ms (240 modules)
+ ✓ Compiled in 112ms (240 modules)
+ ✓ Compiled in 90ms (240 modules)
+ ✓ Compiled in 116ms (240 modules)
+ ✓ Compiled in 98ms (240 modules)
+ ✓ Compiled in 94ms (240 modules)
+ ✓ Compiled in 82ms (240 modules)
+ ✓ Compiled in 103ms (240 modules)
+ ✓ Compiled in 89ms (240 modules)
+ ✓ Compiled in 89ms (240 modules)
+ ✓ Compiled in 82ms (240 modules)
+ ✓ Compiled in 95ms (240 modules)
+ ✓ Compiled in 84ms (240 modules)
+ ✓ Compiled in 88ms (240 modules)
+ ✓ Compiled in 107ms (240 modules)
+ ✓ Compiled in 92ms (240 modules)
+ ✓ Compiled in 91ms (240 modules)
+ ✓ Compiled in 106ms (240 modules)
+ ✓ Compiled in 106ms (240 modules)
+ ✓ Compiled in 96ms (240 modules)
+ ✓ Compiled in 80ms (240 modules)
+ ✓ Compiled in 90ms (240 modules)
+ ✓ Compiled in 101ms (240 modules)
+ ✓ Compiled in 89ms (240 modules)
+ ✓ Compiled in 82ms (240 modules)
+ ✓ Compiled in 118ms (240 modules)
+ ✓ Compiled in 94ms (240 modules)
+ ✓ Compiled in 92ms (240 modules)
+ ✓ Compiled in 106ms (240 modules)
+ ✓ Compiled in 85ms (240 modules)
+ ✓ Compiled in 84ms (240 modules)
+ ✓ Compiled in 92ms (240 modules)
+ ✓ Compiled in 91ms (240 modules)
+ ✓ Compiled in 91ms (240 modules)
+ ✓ Compiled in 80ms (240 modules)
+ ✓ Compiled in 104ms (240 modules)
+ ✓ Compiled in 90ms (240 modules)
+ ✓ Compiled in 88ms (240 modules)
+ ✓ Compiled in 74ms (240 modules)
+ ✓ Compiled in 90ms (240 modules)
+ ✓ Compiled in 101ms (240 modules)
+ ✓ Compiled in 114ms (240 modules)
+ ✓ Compiled in 80ms (240 modules)
+ ✓ Compiled in 93ms (240 modules)
+ GET / 200 in 98ms
+ ✓ Compiled in 130ms (240 modules)
+ ✓ Compiled in 71ms (240 modules)
+ ✓ Compiled in 82ms (240 modules)
+ ✓ Compiled in 93ms (240 modules)
+ ○ Compiling /login ...
+ ✓ Compiled /login in 617ms (674 modules)
+ GET /login 200 in 907ms
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 550ms (755 modules)
+ GET /dashboard 200 in 768ms
+ ✓ Compiled /plugins in 263ms (808 modules)
+ GET /plugins 200 in 401ms
+ ✓ Compiled /projects in 281ms (815 modules)
+ GET /projects 200 in 412ms
+ ✓ Compiled /_not-found in 489ms (820 modules)
+ GET /workspace 404 in 599ms
+ GET /pipeline 404 in 30ms
+ ○ Compiling /reports/review ...
+ ✓ Compiled /reports/review in 641ms (881 modules)
+ GET /reports/review 200 in 782ms
+ GET /admin 404 in 38ms
+ GET / 200 in 109ms
+ GET /login 200 in 85ms
+ GET /dashboard 200 in 59ms
+ GET /plugins 200 in 63ms
+ GET /projects 200 in 63ms
+ GET /workspace 404 in 34ms
+ GET /pipeline 404 in 101ms
+ GET /reports/review 200 in 47ms
+ GET /admin 404 in 39ms
+ GET /dashboard 200 in 54ms
+ GET /plugins 200 in 54ms
+ GET /projects 200 in 53ms
+ GET /reports/review 200 in 51ms
+ ○ Compiling /admin/login ...
+ ✓ Compiled /admin/login in 551ms (888 modules)
+ GET /admin/login 200 in 767ms
+ ○ Compiling /admin/dashboard ...
+ ✓ Compiled /admin/dashboard in 637ms (909 modules)
+ GET /admin/dashboard 200 in 825ms
+ ○ Compiling /admin/plugins ...
+ ✓ Compiled /admin/plugins in 528ms (918 modules)
+ GET /admin/plugins 200 in 698ms
+ ✓ Compiled /admin/users in 420ms (925 modules)
+ GET /admin/users 200 in 551ms
+ ✓ Compiled /admin/logs in 467ms (932 modules)
+ GET /admin/logs 200 in 613ms
+ ✓ Compiled /admin/prompts in 490ms (939 modules)
+ GET /admin/prompts 200 in 627ms
+ ✓ Compiled in 221ms (383 modules)
+ ✓ Compiled in 130ms (383 modules)
+ ✓ Compiled in 164ms (379 modules)
+ ✓ Compiled in 148ms (379 modules)
+ ✓ Compiled in 133ms (379 modules)
+ ✓ Compiled in 119ms (379 modules)
+ ✓ Compiled in 120ms (379 modules)
+ ✓ Compiled in 177ms (379 modules)
+ ✓ Compiled in 102ms (379 modules)
+ ✓ Compiled in 148ms (379 modules)
+ ✓ Compiled in 127ms (379 modules)
+ ✓ Compiled in 133ms (379 modules)
+ ✓ Compiled in 127ms (379 modules)
+ ✓ Compiled in 115ms (379 modules)
+ ✓ Compiled in 147ms (379 modules)
+ ✓ Compiled in 116ms (379 modules)
+ ✓ Compiled in 137ms (379 modules)
+ ✓ Compiled in 167ms (379 modules)
+ ✓ Compiled in 264ms (379 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Users\Kushal\SearchOps AI\frontend\.next\cache\webpack\client-development\21.pack.gz_' -> 'C:\Users\Kushal\SearchOps AI\frontend\.next\cache\webpack\client-development\21.pack.gz'
+ ✓ Compiled in 471ms (379 modules)
+ ✓ Compiled in 393ms (379 modules)
+ ✓ Compiled in 425ms (379 modules)
+ ✓ Compiled in 411ms (379 modules)
+ ✓ Compiled in 425ms (379 modules)
+ ✓ Compiled in 334ms (379 modules)
+ ✓ Compiled in 435ms (379 modules)
+ ✓ Compiled in 423ms (379 modules)
+ ✓ Compiled in 330ms (379 modules)
+ ✓ Compiled in 429ms (379 modules)
+ ✓ Compiled in 395ms (379 modules)
+ ✓ Compiled in 298ms (379 modules)
+ ✓ Compiled in 400ms (379 modules)
+ ✓ Compiled in 389ms (379 modules)
+ ✓ Compiled in 349ms (379 modules)
+ ✓ Compiled in 435ms (379 modules)
+ ✓ Compiled in 497ms (379 modules)
+ ✓ Compiled in 504ms (379 modules)
+ ✓ Compiled in 499ms (379 modules)
+ ✓ Compiled in 406ms (379 modules)
+ ✓ Compiled in 400ms (379 modules)
+ ✓ Compiled in 190ms (379 modules)
+ ✓ Compiled in 819ms (379 modules)
+ ✓ Compiled in 202ms (379 modules)
+ ✓ Compiled in 184ms (379 modules)
+ ⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
+   ▲ Next.js 15.5.19
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.1.10:3001
+   - Environments: .env.local
+   - Experiments (use with caution):
+     · proxyTimeout: 600000
+
+ ✓ Starting...
+ ✓ Ready in 2.1s
+ ⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
+   ▲ Next.js 15.5.19
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.1.10:3001
+   - Environments: .env.local
+   - Experiments (use with caution):
+     · proxyTimeout: 600000
+
+ ✓ Starting...
+ ✓ Ready in 2.1s
+   Reload env: .env.local
+ ⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
+   ▲ Next.js 15.5.19
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.1.10:3001
+   - Environments: .env.local
+   - Experiments (use with caution):
+     · proxyTimeout: 600000
+
+ ✓ Starting...
+ ✓ Ready in 2.3s
+[?25h

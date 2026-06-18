@@ -1,0 +1,359 @@
+@import "tailwindcss";
+
+:root {
+  /* ── Ink & Signal v5.0 — exact token mapping ───────────────────────────── */
+  --background: #0B0E14;
+  --surface: #141A24;
+  --surface-elevated: #1B2230;
+  --foreground: #F4F1EC;
+  --muted: #8B93A3;
+  --muted-foreground: #56606F;
+
+  --border: rgba(244, 241, 236, 0.08);
+  --border-strong: rgba(244, 241, 236, 0.16);
+
+  --primary: #E08A3C;
+  --primary-hover: #C9772E;
+  --primary-soft: rgba(224, 138, 60, 0.14);
+  --primary-foreground: #0B0E14;
+
+  --secondary: #4FA89F;
+  --secondary-soft: rgba(79, 168, 159, 0.14);
+  --ai-accent: var(--secondary);
+  --ai-accent-soft: var(--secondary-soft);
+
+  --success: #7CB88A;
+  --success-soft: rgba(124, 184, 138, 0.14);
+  --warning: #C9982E;
+  --warning-soft: rgba(201, 152, 46, 0.14);
+  --destructive: #C2533F;
+  --destructive-soft: rgba(194, 83, 63, 0.14);
+
+  --glass-bg: rgba(20, 26, 36, 0.72);
+  --glass-bg-strong: rgba(20, 26, 36, 0.88);
+  --glass-border: rgba(244, 241, 236, 0.06);
+
+  --spotlight-bg: #F2EAE0;
+  --spotlight-text: #0B0E14;
+
+  --category-research: #4FA89F;
+  --category-content: #B6705A;
+  --category-technical: #E08A3C;
+  --category-local-seo: #8C6E96;
+  --category-reporting: #8B93A3;
+  --category-visibility: #4FA89F;
+
+  --chart-1: var(--primary);
+  --chart-2: var(--secondary);
+  --chart-3: var(--category-content);
+  --chart-grid: rgba(244, 241, 236, 0.06);
+  --chart-axis: var(--muted);
+
+  --bento-gap: 0.875rem;
+  --bento-radius: 1rem;
+  --bento-padding: 1.25rem;
+
+  /* Legacy aliases (components still reference accent-*) */
+  --accent: var(--primary);
+  --accent-soft: var(--primary-soft);
+
+  --radius: 0.625rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-soft: var(--secondary-soft);
+  --color-ai-accent: var(--ai-accent);
+  --color-ai-accent-soft: var(--ai-accent-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-destructive: var(--destructive);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-spotlight-bg: var(--spotlight-bg);
+  --color-spotlight-text: var(--spotlight-text);
+  --color-category-research: var(--category-research);
+  --color-category-content: var(--category-content);
+  --color-category-technical: var(--category-technical);
+  --color-category-local-seo: var(--category-local-seo);
+  --color-category-reporting: var(--category-reporting);
+  --color-category-visibility: var(--category-visibility);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-axis: var(--chart-axis);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --radius-lg: var(--radius);
+}
+
+body {
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(79, 168, 159, 0.06) 0%, transparent 45%),
+    radial-gradient(ellipse at 100% 0%, rgba(224, 138, 60, 0.05) 0%, transparent 42%),
+    var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+* {
+  border-color: var(--border);
+}
+
+/* ── Glass shell chrome ──────────────────────────────────────────────────── */
+
+.glass-panel {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(244, 241, 236, 0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.glass-panel-strong {
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    0 4px 32px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(244, 241, 236, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* ── Bento grid system ───────────────────────────────────────────────────── */
+
+.bento-grid {
+  display: grid;
+  gap: var(--bento-gap);
+}
+
+.bento-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--bento-gap);
+}
+
+.bento-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--bento-gap);
+}
+
+.bento-hero {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.bento-wide {
+  grid-column: 1 / -1;
+}
+
+.bento-strip {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.bento-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--bento-radius);
+  padding: var(--bento-padding);
+  transition: background 200ms ease-out, border-color 200ms ease-out, transform 200ms ease-out;
+}
+
+.bento-tile:hover {
+  background: var(--surface-elevated);
+  border-color: var(--border-strong);
+}
+
+.bento-tile-strong {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--bento-radius);
+  padding: 1.5rem;
+}
+
+.bento-spotlight {
+  background: var(--spotlight-bg);
+  color: var(--spotlight-text);
+  border: 1px solid rgba(11, 14, 20, 0.08);
+  border-radius: var(--bento-radius);
+  padding: var(--bento-padding);
+}
+
+.bento-spotlight .text-muted,
+.bento-spotlight [class*="text-muted"] {
+  color: rgba(11, 14, 20, 0.55);
+}
+
+.bento-spotlight .text-foreground,
+.bento-spotlight [class*="text-foreground"] {
+  color: var(--spotlight-text);
+}
+
+.bento-spotlight .text-primary {
+  color: #C9772E;
+}
+
+@media (max-width: 1024px) {
+  .bento-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bento-grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ── Landing page animations ─────────────────────────────────────────────── */
+
+@keyframes lp-blob-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(20px, -30px) scale(1.04); }
+  66%       { transform: translate(-15px, 15px) scale(0.97); }
+}
+
+@keyframes lp-blob-float-alt {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(-25px, 20px) scale(1.03); }
+  66%       { transform: translate(22px, -12px) scale(0.98); }
+}
+
+@keyframes lp-card-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
+}
+
+@keyframes lp-glow-breathe {
+  0%, 100% { opacity: 0.35; }
+  50%       { opacity: 0.65; }
+}
+
+@keyframes lp-shimmer {
+  0%   { transform: translateX(-100%) skewX(-15deg); }
+  100% { transform: translateX(260%) skewX(-15deg); }
+}
+
+/* Scroll reveal */
+.lp-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lp-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Enhanced interactive bento cards */
+.lp-card {
+  transition:
+    transform 350ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color 300ms ease,
+    box-shadow 300ms ease,
+    background 200ms ease-out;
+}
+
+.bento-tile.lp-card:hover,
+.bento-tile-strong.lp-card:hover {
+  transform: translateY(-5px) scale(1.013);
+  background: var(--surface-elevated);
+  border-color: rgba(224, 138, 60, 0.28);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(224, 138, 60, 0.16),
+    0 0 40px rgba(224, 138, 60, 0.07);
+}
+
+.bento-tile.lp-card-teal:hover,
+.bento-tile-strong.lp-card-teal:hover {
+  border-color: rgba(79, 168, 159, 0.28);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(79, 168, 159, 0.16),
+    0 0 40px rgba(79, 168, 159, 0.07);
+}
+
+@media (max-width: 640px) {
+  .bento-grid-4,
+  .bento-grid-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bento-hero,
+  .bento-wide {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+}
+
+/* ── Focus & scrollbar ───────────────────────────────────────────────────── */
+
+:focus-visible {
+  outline: 2px solid rgba(224, 138, 60, 0.65);
+  outline-offset: 2px;
+}
+
+.bento-spotlight:focus-visible {
+  outline-color: rgba(11, 14, 20, 0.45);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(11, 14, 20, 0.5);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(244, 241, 236, 0.15);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(224, 138, 60, 0.35);
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

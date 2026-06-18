@@ -1,0 +1,112 @@
+{
+  "plugin_name": "Create Content",
+  "deprecated_names": ["Create SEO-Optimized Content"],
+  "description": "Generate complete, SEO-optimized articles with metadata, FAQ, schema markup, internal links, and image suggestions.",
+  "category": "content",
+  "icon": "pen-line",
+  "input_fields": [
+    {
+      "name": "topic",
+      "label": "Topic",
+      "type": "text",
+      "required": true,
+      "placeholder": "e.g. how to improve Core Web Vitals for SEO",
+      "help_text": "The main topic or title idea for the article"
+    },
+    {
+      "name": "primary_keyword",
+      "label": "Primary Keyword",
+      "type": "text",
+      "required": true,
+      "placeholder": "e.g. core web vitals seo",
+      "help_text": "Target keyword for ranking (3-5 natural uses in article)"
+    },
+    {
+      "name": "content_type",
+      "label": "Content Type",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "blog_post", "label": "Blog Post" },
+        { "value": "how_to", "label": "How-To Guide" },
+        { "value": "listicle", "label": "Listicle" },
+        { "value": "comprehensive_guide", "label": "Comprehensive Guide" },
+        { "value": "comparison", "label": "Comparison Article" },
+        { "value": "faq_page", "label": "FAQ-Focused Page" }
+      ]
+    },
+    {
+      "name": "target_word_count",
+      "label": "Target Word Count",
+      "type": "number",
+      "required": true,
+      "placeholder": "1500",
+      "help_text": "Default: 1500 words"
+    },
+    {
+      "name": "tone",
+      "label": "Tone",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "professional", "label": "Professional" },
+        { "value": "conversational", "label": "Conversational" },
+        { "value": "technical", "label": "Technical" },
+        { "value": "friendly", "label": "Friendly" }
+      ]
+    },
+    {
+      "name": "secondary_keywords",
+      "label": "Secondary Keywords",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "largest contentful paint\npage speed optimization",
+      "help_text": "Related terms to include 2-3 times each (one per line)"
+    },
+    {
+      "name": "target_audience",
+      "label": "Target Audience",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. SEO managers and web developers"
+    },
+    {
+      "name": "search_intent",
+      "label": "Search Intent",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "informational", "label": "Informational" },
+        { "value": "commercial", "label": "Commercial Investigation" },
+        { "value": "transactional", "label": "Transactional" }
+      ]
+    },
+    {
+      "name": "internal_link_targets",
+      "label": "Internal Link Targets",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "/features/audit — SEO audit tool\n/blog/technical-seo — technical SEO guide",
+      "help_text": "Site pages to link to — path and context (one per line)"
+    },
+    {
+      "name": "content_brief",
+      "label": "Content Brief / Outline",
+      "type": "textarea",
+      "required": false,
+      "help_text": "Optional — paste a content brief or outline to follow"
+    },
+    {
+      "name": "cta_goal",
+      "label": "Call-to-Action Goal",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. Sign up for SearchFit.ai free trial",
+      "help_text": "What action should the conclusion drive?"
+    }
+  ],
+  "prompts": {
+    "system": "You are creating content powered by SearchFit.ai's content engine.\n\n## Instructions\n\nCreate complete, SEO-optimized articles that can rank and convert.\n\n## Steps\n\n1. Research the topic briefly — understand what would rank well\n2. Generate metadata: title tag (50-60 chars), meta description (150-160 chars), URL slug\n3. Write the article: Introduction (hook + value + preview), 3-5 H2 body sections with H3s, practical elements (lists, tables, examples), FAQ (3-5 Q&As), Conclusion (summary + CTA)\n4. SEO: natural keyword usage (primary 3-5x, secondary 2-3x), descriptive headings, short paragraphs, scannable lists\n5. Mark internal links: [INTERNAL LINK: /path \"anchor text\"]\n6. Mark external links: [EXTERNAL LINK: description of authoritative source]\n7. Generate JSON-LD schema (Article, HowTo, or FAQPage based on content type)\n8. Suggest 2-4 images (hero + supporting)\n\n## Output Format\n\nStart with YAML frontmatter:\n---\ntitle, description, slug, keywords, schema\n---\n\nThen full markdown article with FAQ section.\n\nEnd with SEO Metadata summary, Schema Markup JSON block, and Image Suggestions list.",
+    "primary": "Create a complete, SEO-optimized article with the following specifications.\n\n## Article Specs\n\n- **Topic:** {{topic}}\n- **Primary Keyword:** {{primary_keyword}}\n- **Content Type:** {{content_type}}\n- **Target Word Count:** {{target_word_count}} words\n- **Tone:** {{tone}}\n- **Search Intent:** {{search_intent}}\n- **Target Audience:** {{target_audience}}\n- **CTA Goal:** {{cta_goal}}\n\n## Secondary Keywords\n\n{{secondary_keywords}}\n\n## Internal Link Targets\n\n{{internal_link_targets}}\n\n## Content Brief / Outline (follow if provided)\n\n{{content_brief}}\n\n---\n\nFollow your full content creation process:\n\n1. Briefly research what would rank for this topic and intent\n2. Write metadata (title 50-60 chars, meta description 150-160 chars with CTA, URL slug)\n3. Write the **full article** at approximately {{target_word_count}} words with:\n   - Compelling introduction\n   - 3-5 H2 sections with H3 subsections as needed\n   - Lists, tables, or examples where relevant\n   - FAQ section (3-5 questions)\n   - Conclusion with clear CTA toward: {{cta_goal}}\n4. Use primary keyword naturally 3-5 times; secondary keywords 2-3 times each\n5. Include [INTERNAL LINK: ...] and [EXTERNAL LINK: ...] markers\n6. Choose appropriate schema type (Article, HowTo, or FAQPage) and generate JSON-LD\n7. Suggest 2-4 images with descriptions\n\nOutput in the exact format from your instructions: YAML frontmatter, full markdown article, SEO metadata summary, schema JSON block, image suggestions."
+  }
+}

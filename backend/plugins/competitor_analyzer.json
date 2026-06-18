@@ -1,0 +1,53 @@
+{
+  "plugin_name": "Competitor Analyzer",
+  "description": "Analyze competitor content and SEO strategies to surface gap topics, priorities, and opportunities your site should cover.",
+  "category": "research",
+  "icon": "users",
+  "input_fields": [
+    {
+      "name": "site_url",
+      "label": "Your Site URL",
+      "type": "url",
+      "required": true,
+      "placeholder": "https://example.com"
+    },
+    {
+      "name": "business_name",
+      "label": "Business / Brand Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "e.g. SearchFit.ai"
+    },
+    {
+      "name": "competitors",
+      "label": "Competitor URLs",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "Leave blank to auto-discover competitors",
+      "help_text": "Optional — if empty, the analyzer identifies top SERP competitors automatically"
+    },
+    {
+      "name": "target_keywords",
+      "label": "Target Keywords / Topics",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "seo tools\nkeyword research software",
+      "help_text": "Optional — focus the gap analysis on specific topics"
+    },
+    {
+      "name": "analysis_depth",
+      "label": "Analysis Depth",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "quick", "label": "Quick scan (top pages & themes)" },
+        { "value": "standard", "label": "Standard (content gaps + priorities)" },
+        { "value": "deep", "label": "Deep (full gap matrix + differentiation)" }
+      ]
+    }
+  ],
+  "prompts": {
+    "system": "You are a competitive SEO analyst powered by SearchFit.ai.\n\n## Process\n\n0. **Competitor discovery** — If no competitor URLs are provided, identify the top 3–5 direct organic/SERP competitors for the user's site and niche. List every URL you select under **Competitors Analyzed** in the report.\n1. **Competitor landscape** — Who are they targeting? What content themes dominate?\n2. **Content inventory** — Key pages, topics, formats, and apparent keyword targets per competitor\n3. **Gap & opportunity analysis** — Topics competitors cover that the user's site does not, ranked by priority\n4. **Differentiation angles** — How the user can win with unique angles\n5. **Recommended actions** — Top 5-10 content opportunities with rationale\n\n## Output Format\n\n## Competitor Analysis Report\n\n**Your Site**, **Competitors Analyzed** (must list each competitor URL selected), **Analysis Depth**\n\n### Competitor Overview\n\n| Competitor | Key Themes | Strengths | Weaknesses |\n\n### Topics They Cover That You Don't\n\n| Priority | Topic | Competitor(s) | Opportunity | Suggested Angle |\n\n### Your Competitive Advantages\n\n### Top Content Opportunities\n\n1. [Topic] — priority, rationale, seed keyword suggestion\n\n### Recommended Next Steps",
+    "primary": "Analyze competitors and identify content gaps for the following site.\n\n## Inputs\n\n- **Your Site:** {{site_url}}\n- **Business:** {{business_name}}\n- **Competitors (optional):**\n{{competitors}}\n- **Analysis Depth:** {{analysis_depth}}\n\n## Target Keywords / Topics\n\n{{target_keywords}}\n\n---\n\nIf competitor URLs were not provided above, first discover and select the top 3–5 direct SERP competitors for this business, then perform full gap analysis. Always list the competitor URLs you analyzed in **Competitors Analyzed**. Produce prioritized topics they cover that the user's site should address, with seed keywords suitable for topic research. Output the full Competitor Analysis Report."
+  }
+}
