@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 export function MarketingNav() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/30 bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+      <div className="marketing-shell flex h-16 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/20 ring-1 ring-primary/30">
@@ -29,7 +29,7 @@ export function MarketingNav() {
             </Button>
           </Link>
           <Link href="/signup">
-            <Button size="sm">Get Started</Button>
+            <Button size="sm">Start free</Button>
           </Link>
         </div>
       </div>

@@ -1,40 +1,40 @@
 import Link from "next/link";
-import { Flame, Globe, Puzzle, Target, FolderKanban, Zap, TrendingUp, CheckCircle2 } from "lucide-react";
+import { Flame, Globe, Puzzle, Target, FolderKanban } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const features = [
   {
     icon: Globe,
-    title: "AI Website Scanner",
-    sub: "Full 5-dimension SEO scoring in under 60 seconds",
+    title: "Website scanner",
+    sub: "SEO score and quick fixes in under a minute",
     accent: "text-primary",
     bg: "border-primary/20 bg-primary/10",
   },
   {
     icon: Puzzle,
-    title: "50+ Plugin Workflows",
-    sub: "Every input pre-filled from your site analysis",
+    title: "50+ workflows",
+    sub: "Forms filled from your site scan",
     accent: "text-category-technical",
     bg: "border-category-technical/20 bg-category-technical/10",
   },
   {
     icon: Target,
-    title: "Auto Competitor Discovery",
-    sub: "Top 10 competitors found from your URL alone",
+    title: "Competitor lookup",
+    sub: "Up to 10 competitors from your URL",
     accent: "text-secondary",
     bg: "border-secondary/20 bg-secondary/10",
   },
   {
     icon: FolderKanban,
-    title: "Projects & Reports",
-    sub: "Save every output and revisit sessions anytime",
+    title: "Projects and reports",
+    sub: "Save everything and come back later",
     accent: "text-category-content",
     bg: "border-category-content/20 bg-category-content/10",
   },
 ];
 
 const stats = [
-  { value: "<60s", label: "Site Analysis", accent: "text-primary" },
+  { value: "<60s", label: "Typical scan", accent: "text-primary" },
   { value: "50+", label: "Workflows", accent: "text-secondary" },
   { value: "10", label: "Competitors", accent: "text-category-technical" },
 ];
@@ -88,16 +88,16 @@ export function AuthLeftPanel() {
         <div className="auth-enter auth-enter-d1 mb-7">
           <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/8 px-3 py-1 text-[10px] font-mono font-semibold uppercase tracking-widest text-primary">
             <Flame className="h-3 w-3" />
-            SEO AI Platform
+            For SEO teams
           </div>
           <h2 className="text-2xl font-bold leading-snug text-foreground lg:text-[1.7rem]">
-            The AI workspace that{" "}
-            <span className="text-primary">outpaces your SEO team</span>
+            SEO audits and reports{" "}
+            <span className="text-primary">from one place</span>
           </h2>
-          <p className="mt-3 text-sm leading-relaxed text-muted">
-            Scan any website in under 60 seconds, auto-discover competitors, and
-            run 50+ structured AI workflows — all from one platform, with every
-            input pre-filled automatically.
+          <p className="mt-3 marketing-body-sm text-muted">
+            Scan a site, get competitors and filled-in forms, then run keyword
+            research, audits, or content briefs — and save the reports by
+            project.
           </p>
         </div>
 
@@ -144,8 +144,8 @@ export function AuthLeftPanel() {
           <div className="flex h-2 w-2 shrink-0 rounded-full bg-success"
                style={{ animation: "lp-glow-breathe 2.5s ease-in-out infinite" }} />
           <p className="text-xs text-muted">
-            <span className="font-medium text-foreground">Analysis cached 7 days</span>
-            {" "}— re-run any workflow without rescanning
+            <span className="font-medium text-foreground">Scans kept for 7 days</span>
+            {" "}— run more workflows without scanning again
           </p>
         </div>
       </div>

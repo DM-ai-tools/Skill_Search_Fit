@@ -12,7 +12,12 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-ENV NEXT_TELEMETRY_DISABLED=1
+# NEXT_PUBLIC_* must be present at build time (Railway: set on the web service before deploy).
+ARG NEXT_PUBLIC_API_URL=""
+ARG NEXT_PUBLIC_APP_NAME="SkillSearchFit"
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME \
+    NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build
 

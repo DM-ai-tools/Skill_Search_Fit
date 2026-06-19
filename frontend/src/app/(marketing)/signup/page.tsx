@@ -84,7 +84,7 @@ export default function SignupPage() {
               Create your account
             </h1>
             <p className="mt-1.5 text-sm text-muted">
-              Start your SEO AI workspace — free, no card required
+              Free to start — no card needed
             </p>
           </div>
 

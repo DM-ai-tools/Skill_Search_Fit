@@ -63,7 +63,7 @@ function LoginForm() {
           <div className="mb-7">
             <h1 className="text-2xl font-bold text-foreground">Welcome back</h1>
             <p className="mt-1.5 text-sm text-muted">
-              Sign in to your SEO AI workspace
+              Sign in to your account
             </p>
           </div>
 
