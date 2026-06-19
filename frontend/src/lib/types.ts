@@ -109,6 +109,12 @@ export interface PipelineStepResult {
   execution_id: string;
   status: string;
   output_markdown: string;
+  output?: {
+    markdown?: string;
+    structured?: Record<string, unknown>;
+    execution_id?: string;
+  };
+  schema_version?: number;
 }
 
 export interface PipelineExecuteResponse {

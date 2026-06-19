@@ -3,16 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useReportReviewStore } from "@/stores/report-review-store";
+import { useChangeSuggestionsStore } from "@/stores/change-suggestions-store";
 import {
-  reportReviewApi,
+  changeSuggestionsApi,
   type ApprovalStatus,
   type ChangeDestination,
-} from "@/lib/report-review-api";
-import { ChangeCard } from "@/components/report-review/change-card";
-import { FilterBar, type Filters } from "@/components/report-review/filter-bar";
-import { ResultsTable } from "@/components/report-review/results-table";
-import { PublishConfirmModal } from "@/components/report-review/publish-confirm-modal";
+} from "@/lib/change-suggestions-api";
+import { ChangeCard } from "@/components/change-suggestions/change-card";
+import { FilterBar, type Filters } from "@/components/change-suggestions/filter-bar";
+import { ResultsTable } from "@/components/change-suggestions/results-table";
+import { PublishConfirmModal } from "@/components/change-suggestions/publish-confirm-modal";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { formatApiError } from "@/lib/format-api-error";
@@ -42,32 +42,33 @@ type DestState = {
 export default function PlanPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const urlReportId = searchParams.get("reportId");
+  const urlSuggestionId = searchParams.get("suggestionId");
 
   const {
-    reportId,
+    suggestionId,
     filename,
     mergedChanges,
     setOverride,
     bulkApprove,
     bulkReject,
-    loadReport,
+    loadSuggestion,
     setPublishResults,
     publishResults,
     publishDryRun,
     reset,
-  } = useReportReviewStore();
+  } = useChangeSuggestionsStore();
 
   const changes = mergedChanges();
 
   // ── Load from URL if store doesn't have this report ───────────────────────
   useEffect(() => {
-    if (!urlReportId || urlReportId === reportId) return;
-    reportReviewApi.get(urlReportId).then(loadReport).catch(() => undefined);
-  }, [urlReportId, reportId, loadReport]);
+    if (!urlSuggestionId || urlSuggestionId === suggestionId) return;
+    changeSuggestionsApi.get(urlSuggestionId).then(loadSuggestion).catch(() => setLoadError(true));
+  }, [urlSuggestionId, suggestionId, loadSuggestion]);
 
   // ── Local state ───────────────────────────────────────────────────────────
   const [view, setView] = useState<View>("review");
+  const [loadError, setLoadError] = useState(false);
   const [filters, setFilters] = useState<Filters>({
     search: "",
     priority: "",
@@ -133,9 +134,9 @@ export default function PlanPage() {
     changeId: string,
     update: { approval_status?: ApprovalStatus; edited_content?: string },
   ) => {
-    if (!reportId) return;
+    if (!suggestionId) return;
     try {
-      await reportReviewApi.patchChange(reportId, changeId, update);
+      await changeSuggestionsApi.patchChange(suggestionId, changeId, update);
     } catch (err) {
       setError(formatApiError(err));
     }
@@ -182,10 +183,10 @@ export default function PlanPage() {
     setDestStates((s) => ({ ...s, [dest]: { ...getDs(dest), ...update } }));
 
   const handleGeneratePayload = async (dest: ChangeDestination) => {
-    if (!reportId) return;
+    if (!suggestionId) return;
     setDs(dest, { generating: true, error: "" });
     try {
-      const resp = await reportReviewApi.generatePayload(reportId, dest);
+      const resp = await changeSuggestionsApi.generatePayload(suggestionId, dest);
       setDs(dest, { payload: resp.content, generating: false });
     } catch (err) {
       setDs(dest, { generating: false, error: formatApiError(err) });
@@ -222,11 +223,11 @@ export default function PlanPage() {
   };
 
   const doPublish = async (dest: ChangeDestination, isDryRun: boolean) => {
-    if (!reportId) return;
+    if (!suggestionId) return;
     setConfirmDest(null);
     setDs(dest, { publishing: true, error: "" });
     try {
-      const resp = await reportReviewApi.publish(reportId, dest, isDryRun);
+      const resp = await changeSuggestionsApi.publish(suggestionId, dest, isDryRun);
       setPublishResults(resp.results, resp.dry_run);
       setDs(dest, { publishing: false });
     } catch (err) {
@@ -235,16 +236,19 @@ export default function PlanPage() {
   };
 
   // ── Loading state ─────────────────────────────────────────────────────────
-  if (!reportId || changes.length === 0) {
+  if (!suggestionId || changes.length === 0) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-        {urlReportId ? (
+        {urlSuggestionId && !loadError ? (
           <>
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-sm text-muted">Loading report…</p>
           </>
         ) : (
           <>
+            {loadError && (
+              <p className="text-sm text-destructive">Failed to load report.</p>
+            )}
             <p className="font-medium text-muted">No report loaded.</p>
             <Button
               variant="outline"

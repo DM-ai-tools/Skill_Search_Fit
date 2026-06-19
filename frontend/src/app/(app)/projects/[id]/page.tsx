@@ -36,7 +36,7 @@ export default function ProjectDetailPage() {
     load().catch(() => setError("Failed to load project"));
   }, [load]);
 
-  const selectedMarkdown = selected ? getOutputMarkdown(selected) : "";
+  const selectedMarkdown = selected ? getOutputMarkdown(selected, selected.plugin_name) : "";
   const downloadResult: ExecuteResponse | null = selected
     ? {
         execution_id: selected.execution_id || selected.id,

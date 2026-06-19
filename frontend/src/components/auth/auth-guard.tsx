@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -13,13 +13,14 @@ export function AuthGuard({
 }) {
   const router = useRouter();
   const { user, loading, fetchUser } = useAuthStore();
+  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    fetchUser();
+    fetchUser().finally(() => setChecked(true));
   }, [fetchUser]);
 
   useEffect(() => {
-    if (loading) return;
+    if (!checked || loading) return;
     if (!user) {
       router.replace(adminOnly ? "/admin/login" : "/login");
       return;
@@ -27,9 +28,9 @@ export function AuthGuard({
     if (adminOnly && user.role !== "admin") {
       router.replace("/dashboard");
     }
-  }, [user, loading, adminOnly, router]);
+  }, [user, loading, checked, adminOnly, router]);
 
-  if (loading || !user) {
+  if (!checked || loading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background text-muted">
         Loading...

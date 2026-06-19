@@ -8,7 +8,7 @@ interface AuthState {
   user: User | null;
   loading: boolean;
   fetchUser: () => Promise<User | null>;
-  login: (email: string, password: string, admin?: boolean) => Promise<User>;
+  login: (email: string, password: string, admin?: boolean, remember?: boolean) => Promise<User>;
   signup: (name: string, email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
   setUser: (user: User | null) => void;
@@ -30,9 +30,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  login: async (email, password, admin = false) => {
+  login: async (email, password, admin = false, remember = false) => {
     const path = admin ? "/auth/admin/login" : "/auth/login";
-    const user = await api.post<User>(path, { email, password }, false);
+    const user = await api.post<User>(path, { email, password, remember }, false);
     set({ user });
     return user;
   },

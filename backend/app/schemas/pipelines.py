@@ -24,6 +24,13 @@ class PipelineExecuteRequest(BaseModel):
     inputs: dict[str, Any] = Field(default_factory=dict)
 
 
+class PipelineStepExecuteRequest(BaseModel):
+    project_id: UUID
+    inputs: dict[str, Any] = Field(default_factory=dict)
+    step_index: int = Field(ge=1, description="1-based step index in the pipeline")
+    prior_markdown: list[str] = Field(default_factory=list)
+
+
 class PipelineStepResult(BaseModel):
     step: int
     plugin_id: UUID
@@ -32,6 +39,8 @@ class PipelineStepResult(BaseModel):
     execution_id: UUID
     status: str
     output_markdown: str
+    output: dict[str, Any] = Field(default_factory=dict)
+    schema_version: int = 1
 
 
 class PipelineExecuteResponse(BaseModel):

@@ -4,13 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
-import type { ExecuteResponse, Output, Plugin, PluginAutofillResult, WorkspaceSession } from "@/lib/types";
+import type { ExecuteResponse, InputField, Output, Plugin, PluginAutofillResult, WorkspaceSession } from "@/lib/types";
 import { useProjectStore } from "@/stores/project-store";
 import { DynamicForm } from "@/components/plugins/dynamic-form";
-import { BentoSectionHeader, BentoTile } from "@/components/bento";
+import { BentoTile } from "@/components/bento";
 import { ProjectGatePanel } from "@/components/projects/project-gate-panel";
 import { ReportDownloadPanel } from "@/components/reports/report-download-panel";
-import { ExecutionProgress } from "@/components/workspace/execution-progress";
+import { WorkspaceGenerationPanel } from "@/components/workspace/workspace-generation-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,10 +18,13 @@ import { cn } from "@/lib/utils";
 import { formatApiError } from "@/lib/format-api-error";
 import { displayPluginName, getPluginCategory } from "@/lib/plugin-catalog";
 import { getPluginRunLabel } from "@/lib/plugin-actions";
-import { getOutputMarkdown } from "@/lib/report-utils";
+import { getExecutionMarkdown, getOutputMarkdown } from "@/lib/report-utils";
+import { validateAutofillValues } from "@/lib/autofill-validation";
 import { normalizePluginInputs, resolveSelectValue } from "@/lib/plugin-field-utils";
 import { getApiCapabilities } from "@/lib/api-capabilities";
-import { FileText, Sparkles } from "lucide-react";
+import { FileText, LogOut, Sparkles } from "lucide-react";
+import { useAuthStore } from "@/stores/auth-store";
+import { HeaderProjectControls } from "@/components/layout/header-project-controls";
 
 const EXECUTION_STEPS = ["Validate inputs", "Load prompt template", "AI execution", "Process response"];
 
@@ -36,11 +39,19 @@ export function WorkspaceView({
 }) {
   const router = useRouter();
   const { activeProjectId, setActiveProject } = useProjectStore();
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/login");
+  };
   const [plugin, setPlugin] = useState<Plugin | null>(null);
   const [session, setSession] = useState<WorkspaceSession | null>(null);
   const [outputs, setOutputs] = useState<Output[]>([]);
   const [notes, setNotes] = useState("");
   const [running, setRunning] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<ExecuteResponse | null>(null);
@@ -56,7 +67,9 @@ export function WorkspaceView({
   const [postRunWarning, setPostRunWarning] = useState("");
   const [fieldSuggestions, setFieldSuggestions] = useState<Record<string, string[]>>({});
   const [suggestionsEnabled, setSuggestionsEnabled] = useState(false);
+  const [autofillWarning, setAutofillWarning] = useState("");
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pendingResultRef = useRef<ExecuteResponse | null>(null);
 
   const effectiveProjectId = projectId || activeProjectId;
 
@@ -120,12 +133,23 @@ export function WorkspaceView({
     const values: Record<string, unknown> = {};
     const scores: Record<string, number> = {};
     const suggestions: Record<string, string[]> = {};
+
+    const resolveFieldValue = (field: InputField | undefined, raw: unknown) => {
+      if (field?.type === "select") return resolveSelectValue(field, raw);
+      return raw;
+    };
+
     if (res.fields && Object.keys(res.fields).length > 0) {
       for (const [key, item] of Object.entries(res.fields)) {
         const field = plugin?.input_fields?.find((f) => f.name === key);
-        const rawValue =
-          field?.type === "select" ? resolveSelectValue(field, item.value) : item.value;
-        values[key] = rawValue;
+        let rawValue = item.value ?? res.recommended_values?.[key];
+        if (
+          (rawValue === null || rawValue === undefined || rawValue === "") &&
+          item.suggestions?.length
+        ) {
+          rawValue = item.suggestions[0];
+        }
+        values[key] = resolveFieldValue(field, rawValue);
         scores[key] = item.confidence;
         if (item.suggestions?.length) {
           suggestions[key] = field?.type === "select"
@@ -135,11 +159,43 @@ export function WorkspaceView({
       }
     } else {
       for (const [key, val] of Object.entries(res.recommended_values || {})) {
-        const conf = res.confidence_scores?.[key] ?? 0;
-        values[key] = val;
-        scores[key] = conf;
+        const field = plugin?.input_fields?.find((f) => f.name === key);
+        values[key] = resolveFieldValue(field, val);
+        scores[key] = res.confidence_scores?.[key] ?? 0;
       }
     }
+
+    for (const field of plugin?.input_fields || []) {
+      const current = values[field.name];
+      const isEmpty =
+        current === undefined ||
+        current === null ||
+        (typeof current === "string" && current.trim() === "");
+      if (!isEmpty) continue;
+      const fallback = res.recommended_values?.[field.name];
+      if (fallback !== undefined && fallback !== null && fallback !== "") {
+        values[field.name] = resolveFieldValue(field, fallback);
+        scores[field.name] = res.confidence_scores?.[field.name] ?? scores[field.name] ?? 0.5;
+      }
+    }
+
+    for (const field of plugin?.input_fields || []) {
+      if (field.name in values) continue;
+      if (field.type === "checkbox") values[field.name] = false;
+      else if (field.type === "number") values[field.name] = "";
+      else values[field.name] = "";
+    }
+
+    const validationErrors = validateAutofillValues(plugin?.input_fields || [], values);
+    if (validationErrors.length > 0) {
+      setAutofillWarning(
+        validationErrors.map((e) => e.message).join(". ") +
+          ". Review highlighted fields before running.",
+      );
+    } else {
+      setAutofillWarning("");
+    }
+
     setAutofillValues(values);
     setConfidenceScores(scores);
     if (Object.keys(suggestions).length > 0) setFieldSuggestions(suggestions);
@@ -147,10 +203,37 @@ export function WorkspaceView({
     setFormKey(`autofill-${Date.now()}`);
   };
 
+  const countEmptyRequiredAutofillFields = (res: PluginAutofillResult) => {
+    const fields = plugin?.input_fields || [];
+    let empty = 0;
+    for (const field of fields) {
+      if (!field.required) continue;
+      const fromFields = res.fields?.[field.name]?.value;
+      const fromRecommended = res.recommended_values?.[field.name];
+      const raw = fromFields ?? fromRecommended;
+      if (raw === undefined || raw === null || (typeof raw === "string" && raw.trim() === "")) {
+        empty += 1;
+      }
+    }
+    return empty;
+  };
+
+  const isCompetitorsAutofillEmpty = (res: PluginAutofillResult) => {
+    const competitorFields = (plugin?.input_fields || []).filter((field) =>
+      /competitor/i.test(field.name),
+    );
+    if (competitorFields.length === 0) return false;
+    return competitorFields.every((field) => {
+      const raw = res.fields?.[field.name]?.value ?? res.recommended_values?.[field.name];
+      return raw === undefined || raw === null || (typeof raw === "string" && raw.trim() === "");
+    });
+  };
+
   const handleAutofill = async () => {
     if (!plugin || !siteUrl) return;
     setAutofilling(true);
     setError("");
+    setAutofillWarning("");
     try {
       const caps = await getApiCapabilities();
       if (!caps.websiteAnalysis) {
@@ -164,7 +247,15 @@ export function WorkspaceView({
         const cached = await api.get<PluginAutofillResult>(
           `/website-analysis/plugins/${pluginId}/prefill?url=${encodeURIComponent(siteUrl)}`
         );
-        applyAutofillResult(cached);
+        if (countEmptyRequiredAutofillFields(cached) >= 2 || isCompetitorsAutofillEmpty(cached)) {
+          const res = await api.post<PluginAutofillResult>(
+            `/website-analysis/plugins/${pluginId}/autofill`,
+            { url: siteUrl }
+          );
+          applyAutofillResult(res);
+        } else {
+          applyAutofillResult(cached);
+        }
         return;
       } catch (e) {
         const err = e as ApiError;
@@ -229,8 +320,10 @@ export function WorkspaceView({
     setError("");
     setPostRunWarning("");
     setRunning(true);
+    setGenerating(true);
     setResult(null);
     setViewingOutput(null);
+    pendingResultRef.current = null;
     startProgress();
     try {
       const res = await api.post<ExecuteResponse>(`/execute/${pluginId}`, {
@@ -239,15 +332,15 @@ export function WorkspaceView({
         schema_version: plugin.schema_version,
       });
       finishProgress();
-      setResult(res);
+      setGenerating(false);
       setSchemaWarning(false);
-
       router.push(`/reports/view?executionId=${res.execution_id}&pluginId=${plugin.id}`);
       return;
     } catch (err) {
       if (progressTimer.current) clearInterval(progressTimer.current);
       setProgress(0);
       setActiveStep(0);
+      setGenerating(false);
       if (err instanceof ApiError && err.code === "SCHEMA_OUTDATED") {
         setSchemaWarning(true);
         setError("Plugin form was updated. Please review your inputs and try again.");
@@ -256,6 +349,16 @@ export function WorkspaceView({
       }
     } finally {
       setRunning(false);
+    }
+  };
+
+  const handleStreamComplete = () => {
+    const res = pendingResultRef.current;
+    setGenerating(false);
+    setProgress(0);
+    setActiveStep(0);
+    if (res && plugin) {
+      router.push(`/reports/view?executionId=${res.execution_id}&pluginId=${plugin.id}`);
     }
   };
 
@@ -294,8 +397,8 @@ export function WorkspaceView({
   }, [notes, saveNotes]);
 
   const activeMarkdown = viewingOutput
-    ? getOutputMarkdown(viewingOutput)
-    : result?.output.markdown ?? "";
+    ? getOutputMarkdown(viewingOutput, viewingOutput.plugin_name)
+    : getExecutionMarkdown(result?.output, plugin?.plugin_name);
 
   if (!effectiveProjectId) {
     return (
@@ -315,22 +418,26 @@ export function WorkspaceView({
   const defaultValues = suggestionsEnabled ? autofillValues : {};
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col gap-4">
-      <BentoSectionHeader
-        eyebrow="Plugin Workspace"
-        title={displayPluginName(plugin.plugin_name)}
-        description={plugin.description}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Link href="/plugins" className="text-sm text-primary hover:underline">
-              ← Plugins
-            </Link>
-            {(result?.output?.structured?.preview === true ||
-              result?.output?.structured?.ai_mode === "preview") && <Badge variant="warning">Preview mode</Badge>}
-            {result?.output?.structured?.ai_mode === "claude" && <Badge variant="default">Claude</Badge>}
-          </div>
-        }
-      />
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
+      {/* ── Top controls bar ─────────────────────────────────────────────── */}
+      <div className="flex shrink-0 items-center justify-between gap-3">
+        <Link href="/plugins" className="text-sm font-medium text-primary hover:underline">
+          ← Plugins
+        </Link>
+        <div className="flex items-center gap-2">
+          <HeaderProjectControls />
+          <span className="hidden text-xs text-muted sm:block">{user?.name}</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleLogout}
+            aria-label="Log out"
+            className="h-8 w-8 text-muted hover:text-destructive"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
 
       {schemaWarning && (
         <div className="rounded-xl border border-warning/25 bg-warning-soft/20 px-4 py-3 text-sm text-warning">
@@ -347,31 +454,38 @@ export function WorkspaceView({
         </div>
       )}
 
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[320px_1fr_300px]">
-        <BentoTile variant="strong" className="flex flex-col overflow-auto p-4">
-          <h2 className="text-sm font-semibold">Inputs</h2>
-          <p className="mt-1 text-xs text-muted">
-            Fields start empty. Click Generate by AI to fill values and open suggestion dropdowns.
-          </p>
-          {siteUrl && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-3 w-full border-primary/30 bg-primary/8 text-primary hover:bg-primary/15"
-              onClick={handleAutofill}
-              disabled={autofilling || running}
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              {autofilling ? "Generating..." : "Generate by AI"}
-            </Button>
-          )}
-          <div className="mt-4 flex-1">
+      <div className="grid min-h-0 flex-1 gap-3 overflow-hidden lg:grid-cols-[minmax(260px,22%)_minmax(0,1fr)_minmax(240px,20%)]">
+        <BentoTile variant="strong" className="flex min-h-0 flex-col overflow-hidden p-0">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pt-4 pb-2 space-y-4">
+            {siteUrl && (
+              <button
+                type="button"
+                onClick={handleAutofill}
+                disabled={autofilling || running || generating}
+                className="ai-gen-btn group relative flex w-full items-center justify-center gap-2.5 overflow-hidden rounded-2xl px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/35 to-transparent" />
+                <div className="pointer-events-none absolute inset-x-6 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                {autofilling ? (
+                  <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                ) : (
+                  <Sparkles className="h-4 w-4 shrink-0 text-primary transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />
+                )}
+                <span className="text-primary">
+                  {autofilling ? "Generating…" : "Generate by AI"}
+                </span>
+              </button>
+            )}
+            {autofillWarning && (
+              <div className="rounded-xl border border-warning/25 bg-warning-soft/20 px-3 py-2.5 text-xs text-warning">
+                {autofillWarning}
+              </div>
+            )}
             <DynamicForm
               fields={plugin.input_fields || []}
               defaultValues={defaultValues}
               onSubmit={handleRun}
-              disabled={running}
+              disabled={running || generating}
               pluginName={plugin.plugin_name}
               pluginId={pluginId}
               siteUrl={siteUrl}
@@ -381,39 +495,54 @@ export function WorkspaceView({
               suggestionsEnabled={suggestionsEnabled}
             />
           </div>
-          <Button type="submit" form="plugin-form" className="mt-4 w-full" disabled={running}>
-            {running ? "Running…" : getPluginRunLabel(getPluginCategory(plugin.plugin_name, plugin.category), displayPluginName(plugin.plugin_name))}
-          </Button>
+
+          <div className="shrink-0 border-t border-border/50 bg-surface-elevated/60 p-4 pt-3">
+            <Button type="submit" form="plugin-form" className="w-full" disabled={running || generating}>
+              {running || generating ? "Running…" : getPluginRunLabel(getPluginCategory(plugin.plugin_name, plugin.category), displayPluginName(plugin.plugin_name))}
+            </Button>
+          </div>
         </BentoTile>
 
-        <BentoTile className="flex min-h-0 flex-col overflow-auto p-4">
-          <ExecutionProgress
-            steps={EXECUTION_STEPS}
-            activeStep={activeStep}
-            progress={progress}
-            running={running}
-          />
-
-          {result && !viewingOutput && (
-            <div className="mb-4">
-              <ReportDownloadPanel
-                result={result}
-                pluginName={plugin.plugin_name}
-                onSave={handleSaveOutput}
-                saving={saving}
-              />
-            </div>
-          )}
-
-          {activeMarkdown ? (
-            <div className="flex-1 overflow-auto rounded-xl border border-border/30 bg-background/60">
-              <pre className="p-4 text-sm leading-relaxed text-foreground/85 whitespace-pre-wrap font-[inherit]">
-                {activeMarkdown}
-              </pre>
-            </div>
+        <BentoTile className="relative flex min-h-0 flex-col overflow-hidden p-0">
+          {(running || generating) ? (
+            <WorkspaceGenerationPanel
+              embedded
+              progress={progress}
+              pluginName={plugin.plugin_name}
+              markdown={getExecutionMarkdown(result?.output, plugin.plugin_name)}
+              onComplete={handleStreamComplete}
+              label={result?.output?.markdown ? "Rendering report" : "Generating report"}
+            />
           ) : (
-            !running && (
-              <div className="flex flex-1 flex-col items-center justify-center gap-3 py-8 text-center">
+          <>
+            {result && !viewingOutput && (
+              <div className="mb-4 space-y-3 p-4 pb-0">
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {(result.output?.structured?.preview === true ||
+                    result.output?.structured?.ai_mode === "preview") && (
+                    <Badge variant="warning">Preview mode</Badge>
+                  )}
+                  {result.output?.structured?.ai_mode === "claude" && (
+                    <Badge variant="default">Claude</Badge>
+                  )}
+                </div>
+                <ReportDownloadPanel
+                  result={result}
+                  pluginName={plugin.plugin_name}
+                  onSave={handleSaveOutput}
+                  saving={saving}
+                />
+              </div>
+            )}
+
+            {activeMarkdown ? (
+              <div className="flex-1 overflow-auto rounded-xl border border-border/30 bg-background/60 mx-4 mb-4">
+                <pre className="p-4 text-sm leading-relaxed text-foreground/85 whitespace-pre-wrap font-[inherit]">
+                  {activeMarkdown}
+                </pre>
+              </div>
+            ) : (
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-8 text-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface ring-1 ring-border">
                   <FileText className="h-5 w-5 text-muted/50" />
                 </div>
@@ -423,13 +552,19 @@ export function WorkspaceView({
                   {getPluginRunLabel(getPluginCategory(plugin.plugin_name, plugin.category), displayPluginName(plugin.plugin_name)).toLowerCase()}.
                 </p>
               </div>
-            )
+            )}
+          </>
           )}
-          {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
-          {postRunWarning && <p className="mt-4 text-sm text-warning">{postRunWarning}</p>}
+          {error && !running && !generating && (
+            <p className="px-4 pb-4 text-sm text-destructive">{error}</p>
+          )}
+          {postRunWarning && !running && !generating && (
+            <p className="px-4 pb-4 text-sm text-warning">{postRunWarning}</p>
+          )}
         </BentoTile>
 
-        <BentoTile className="flex flex-col gap-4 overflow-auto p-4">
+        <BentoTile className="flex min-h-0 flex-col overflow-hidden p-4">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-y-contain">
           <div>
             <h2 className="text-sm font-semibold">Notes</h2>
             <Textarea
@@ -480,6 +615,7 @@ export function WorkspaceView({
                 </p>
               )}
             </ul>
+          </div>
           </div>
         </BentoTile>
       </div>

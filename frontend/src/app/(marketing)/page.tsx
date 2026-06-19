@@ -686,7 +686,7 @@ export default function HomePage() {
         <AnimatedReveal className="pb-20">
           <div className="mb-8 text-center">
             <p className="font-mono text-[11px] font-semibold uppercase tracking-widest text-primary/70">
-              Who it's for
+              Who it&apos;s for
             </p>
             <h2 className="mt-2 text-2xl font-semibold text-foreground">
               Built for every kind of SEO professional

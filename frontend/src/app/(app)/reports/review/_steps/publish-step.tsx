@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useReportReviewStore } from "@/stores/report-review-store";
-import { reportReviewApi, type ChangeDestination } from "@/lib/report-review-api";
+import { useChangeSuggestionsStore } from "@/stores/change-suggestions-store";
+import { changeSuggestionsApi, type ChangeDestination } from "@/lib/change-suggestions-api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ResultsTable } from "@/components/report-review/results-table";
-import { PublishConfirmModal } from "@/components/report-review/publish-confirm-modal";
+import { ResultsTable } from "@/components/change-suggestions/results-table";
+import { PublishConfirmModal } from "@/components/change-suggestions/publish-confirm-modal";
 import { formatApiError } from "@/lib/format-api-error";
 import { Download, Copy, CheckCircle2, Loader2, AlertTriangle } from "lucide-react";
 
@@ -21,8 +21,8 @@ type DestState = {
 };
 
 export function PublishStep() {
-  const { reportId, mergedChanges, publishResults, publishDryRun, setPublishResults, setStep } =
-    useReportReviewStore();
+  const { suggestionId, mergedChanges, publishResults, publishDryRun, setPublishResults, setStep } =
+    useChangeSuggestionsStore();
 
   const changes = mergedChanges();
   const approved = changes.filter((c) => c.approval_status === "approved");
@@ -49,10 +49,10 @@ export function PublishStep() {
     setDestStates((s) => ({ ...s, [dest]: { ...getState(dest), ...update } }));
 
   const handleGeneratePayload = async (dest: ChangeDestination) => {
-    if (!reportId) return;
+    if (!suggestionId) return;
     setDs(dest, { generating: true, error: "" });
     try {
-      const resp = await reportReviewApi.generatePayload(reportId, dest);
+      const resp = await changeSuggestionsApi.generatePayload(suggestionId, dest);
       setDs(dest, { payload: resp.content, generating: false });
     } catch (err) {
       setDs(dest, { generating: false, error: formatApiError(err) });
@@ -89,11 +89,11 @@ export function PublishStep() {
   };
 
   const doPublish = async (dest: ChangeDestination, isDryRun: boolean) => {
-    if (!reportId) return;
+    if (!suggestionId) return;
     setConfirmDest(null);
     setDs(dest, { publishing: true, error: "" });
     try {
-      const resp = await reportReviewApi.publish(reportId, dest, isDryRun);
+      const resp = await changeSuggestionsApi.publish(suggestionId, dest, isDryRun);
       setPublishResults(resp.results, resp.dry_run);
       setDs(dest, { publishing: false });
     } catch (err) {

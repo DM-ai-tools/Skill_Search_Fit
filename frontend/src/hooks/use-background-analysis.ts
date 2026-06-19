@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import type { WebsiteAnalysis } from "@/lib/types";
 import { useAnalysisStore } from "@/stores/analysis-store";
 import { useSiteStore } from "@/stores/site-store";
@@ -76,8 +76,12 @@ export function useBackgroundAnalysis() {
           pollStatus().catch(() => undefined);
         }, POLL_MS);
         await pollStatus();
-      } catch {
-        setError("Could not start background analysis");
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 404) {
+          setError("Website analysis API not available — restart the backend (npm run dev from project root)");
+        } else {
+          setError("Could not start background analysis");
+        }
         setPhase("failed");
       }
     },

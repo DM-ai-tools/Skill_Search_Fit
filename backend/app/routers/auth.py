@@ -78,6 +78,7 @@ async def login(body: LoginRequest, request: Request, response: Response):
             role=row["role"],
             ip_address=ip,
             user_agent=request.headers.get("user-agent"),
+            remember=body.remember,
         )
         await log_activity(
             conn,
@@ -87,7 +88,7 @@ async def login(body: LoginRequest, request: Request, response: Response):
             ip_address=ip,
         )
 
-    set_session_cookies(response, session_id, csrf)
+    set_session_cookies(response, session_id, csrf, remember=body.remember)
     return UserResponse(
         id=row["id"],
         name=row["name"],
@@ -156,7 +157,7 @@ async def me(request: Request):
     pool = get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT id, name, email, role::text, created_at FROM users WHERE id = $1",
+            "SELECT id, name, email, role::text, created_at FROM users WHERE id = $1 AND deleted_at IS NULL",
             user.id,
         )
     if not row:

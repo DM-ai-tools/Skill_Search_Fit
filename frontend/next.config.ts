@@ -6,6 +6,7 @@ const API_PROXY_TARGET = process.env.API_PROXY_TARGET || "http://localhost:8000"
 const PROXY_TIMEOUT_MS = Number(process.env.API_PROXY_TIMEOUT_MS || 600_000);
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   outputFileTracingRoot: path.join(process.cwd()),
   experimental: {
     proxyTimeout: PROXY_TIMEOUT_MS,

@@ -6,12 +6,12 @@ export type ChangeType = "metadata" | "schema" | "content" | "technical" | "capt
 export type ChangePriority = "High" | "Medium" | "Low";
 export type ChangeDestination = "WordPress" | "Webflow" | "Wix" | "Mailchimp";
 export type ApprovalStatus = "pending" | "approved" | "rejected";
-export type ReportStatus = "uploaded" | "extracting" | "ready" | "failed";
+export type SuggestionStatus = "uploaded" | "extracting" | "ready" | "failed";
 
-export interface ReportResponse {
+export interface ChangeSuggestionResponse {
   id: string;
   filename: string;
-  status: ReportStatus;
+  status: SuggestionStatus;
   extract_error: string | null;
   created_at: string;
   updated_at: string;
@@ -19,7 +19,7 @@ export interface ReportResponse {
 
 export interface ChangeResponse {
   id: string;
-  report_id: string;
+  suggestion_id: string;
   page_url: string;
   change_type: ChangeType;
   priority: ChangePriority;
@@ -35,8 +35,8 @@ export interface ChangeResponse {
   updated_at: string;
 }
 
-export interface ReportWithChanges {
-  report: ReportResponse;
+export interface ChangeSuggestionWithChanges {
+  suggestion: ChangeSuggestionResponse;
   changes: ChangeResponse[];
 }
 
@@ -63,28 +63,29 @@ export interface PayloadResponse {
 
 // ── API calls ─────────────────────────────────────────────────────────────────
 
-export const reportReviewApi = {
+export const changeSuggestionsApi = {
   upload: (rawContent: string, filename: string) =>
-    api.post<ReportResponse>("/reports", { raw_content: rawContent, filename }),
+    api.post<ChangeSuggestionResponse>("/change-suggestions", { raw_content: rawContent, filename }),
 
-  list: () => api.get<ReportResponse[]>("/reports"),
+  list: () => api.get<ChangeSuggestionResponse[]>("/change-suggestions"),
 
-  get: (reportId: string) => api.get<ReportWithChanges>(`/reports/${reportId}`),
+  get: (suggestionId: string) =>
+    api.get<ChangeSuggestionWithChanges>(`/change-suggestions/${suggestionId}`),
 
-  extract: (reportId: string) =>
-    api.post<ReportWithChanges>(`/reports/${reportId}/extract`),
+  extract: (suggestionId: string) =>
+    api.post<ChangeSuggestionWithChanges>(`/change-suggestions/${suggestionId}/extract`),
 
   patchChange: (
-    reportId: string,
+    suggestionId: string,
     changeId: string,
     body: { approval_status?: ApprovalStatus; edited_content?: string },
-  ) => api.patch<ChangeResponse>(`/reports/${reportId}/changes/${changeId}`, body),
+  ) => api.patch<ChangeResponse>(`/change-suggestions/${suggestionId}/changes/${changeId}`, body),
 
-  generatePayload: (reportId: string, destination: ChangeDestination) =>
-    api.post<PayloadResponse>(`/reports/${reportId}/payload`, { destination }),
+  generatePayload: (suggestionId: string, destination: ChangeDestination) =>
+    api.post<PayloadResponse>(`/change-suggestions/${suggestionId}/payload`, { destination }),
 
-  publish: (reportId: string, destination: ChangeDestination, dryRun: boolean) =>
-    api.post<PublishResponse>(`/reports/${reportId}/publish`, {
+  publish: (suggestionId: string, destination: ChangeDestination, dryRun: boolean) =>
+    api.post<PublishResponse>(`/change-suggestions/${suggestionId}/publish`, {
       destination,
       dry_run: dryRun,
     }),

@@ -1,4 +1,5 @@
 import { displayPluginName } from "@/lib/plugin-catalog";
+import { stripMarkdown } from "@/lib/report-text";
 
 export type ParsedSection = {
   title: string;
@@ -88,7 +89,7 @@ export function parseMarkdownSections(markdown: string): ParsedSection[] {
     const heading = line.match(/^(#{1,4})\s+(.+)$/);
     if (heading) {
       if (current) sections.push(current);
-      current = { title: heading[2].trim(), level: heading[1].length, body: "" };
+      current = { title: stripMarkdown(heading[2].trim()), level: heading[1].length, body: "" };
       continue;
     }
     if (!current) current = { title: "Overview", level: 2, body: "" };

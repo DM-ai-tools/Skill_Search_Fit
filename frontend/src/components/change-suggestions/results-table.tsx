@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, XCircle } from "lucide-react";
-import type { PublishItemResult } from "@/lib/report-review-api";
+import type { PublishItemResult } from "@/lib/change-suggestions-api";
 
 interface ResultsTableProps {
   results: PublishItemResult[];

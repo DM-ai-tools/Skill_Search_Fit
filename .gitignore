@@ -16,6 +16,9 @@ frontend/.next/
 dist/
 *.egg-info/
 
+# Docker / deploy artifacts
+*.log
+
 # IDE / OS
 .idea/
 .vscode/

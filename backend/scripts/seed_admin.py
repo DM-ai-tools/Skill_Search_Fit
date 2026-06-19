@@ -6,13 +6,16 @@ import psycopg
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from app.config import normalize_database_url
 from app.services.password import hash_password
 
 
 def main() -> None:
-    database_url = os.environ.get(
-        "DATABASE_URL",
-        "postgresql://skillsearchfit:skillsearchfit@localhost:5432/skillsearchfit",
+    database_url = normalize_database_url(
+        os.environ.get(
+            "DATABASE_URL",
+            "postgresql://skillsearchfit:skillsearchfit@localhost:5432/skillsearchfit",
+        )
     )
     email = os.environ.get("ADMIN_EMAIL", "admin@skillsearchfit.local")
     password = os.environ.get("ADMIN_PASSWORD", "Admin123!")

@@ -14,6 +14,7 @@ from app.exceptions import forbidden, unauthorized
 
 SESSION_COOKIE = "ssf_session"
 CSRF_COOKIE = "ssf_csrf"
+REMEMBER_MAX_AGE = 30 * 24 * 3600  # 30 days
 
 PUBLIC_PATHS = {
     "/api/v1/auth/login",
@@ -57,10 +58,12 @@ async def create_session(
     role: str,
     ip_address: str | None,
     user_agent: str | None,
+    remember: bool = False,
 ) -> tuple[UUID, str]:
     session_id = uuid4()
     csrf_token = _generate_csrf_token()
-    expires_at = datetime.now(timezone.utc) + timedelta(seconds=settings.session_max_age)
+    max_age = REMEMBER_MAX_AGE if remember else settings.session_max_age
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=max_age)
     data = json.dumps({"login_status": True, "role": role})
 
     await conn.execute(
@@ -107,9 +110,9 @@ async def load_session(conn: asyncpg.Connection, session_id: UUID) -> SessionDat
     return SessionData(row["id"], user, row["csrf_token"])
 
 
-def set_session_cookies(response, session_id: UUID, csrf_token: str) -> None:
+def set_session_cookies(response, session_id: UUID, csrf_token: str, remember: bool = False) -> None:
     secure = settings.is_production
-    max_age = settings.session_max_age
+    max_age = REMEMBER_MAX_AGE if remember else None
     response.set_cookie(
         key=SESSION_COOKIE,
         value=str(session_id),

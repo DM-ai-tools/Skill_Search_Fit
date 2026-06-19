@@ -22,8 +22,7 @@ export async function getApiCapabilities(): Promise<ApiCapabilities> {
   try {
     const res = await fetch(resolveHealthUrl(), { credentials: "include" });
     if (!res.ok) {
-      cached = { websiteAnalysis: false, features: [] };
-      return cached;
+      return { websiteAnalysis: false, features: [] };
     }
     const data = (await res.json()) as { features?: string[] };
     const features = data.features ?? [];
@@ -33,8 +32,7 @@ export async function getApiCapabilities(): Promise<ApiCapabilities> {
     };
     return cached;
   } catch {
-    cached = { websiteAnalysis: false, features: [] };
-    return cached;
+    return { websiteAnalysis: false, features: [] };
   }
 }
 

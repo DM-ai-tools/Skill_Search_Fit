@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -31,24 +32,48 @@ export function CatalogTile({
   const content = (
     <div
       className={cn(
-        "bento-tile group flex h-full flex-col gap-4 border-border/30 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30",
-        featured && "lg:flex-row lg:items-start lg:gap-5",
+        "bento-tile group flex h-full flex-col overflow-hidden border-border/30 p-0",
+        featured && "lg:flex-row lg:items-stretch",
         className,
       )}
     >
-      {icon && <div className="shrink-0">{icon}</div>}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="text-base font-semibold text-foreground transition-colors group-hover:text-primary">
+      <div
+        className={cn(
+          "relative z-[1] flex flex-1 flex-col gap-3 p-4",
+          featured && "lg:flex-row lg:items-start lg:gap-5",
+        )}
+      >
+        <div className={cn("flex items-start justify-between gap-2", featured && "lg:shrink-0")}>
+          {icon && <div className="shrink-0">{icon}</div>}
+          {badge && (
+            <div className={cn(!icon && "ml-auto")}>
+              {typeof badge === "string" ? <Badge variant="outline">{badge}</Badge> : badge}
+            </div>
+          )}
+        </div>
+
+        <div className={cn("min-w-0 flex-1", featured && "lg:min-w-0")}>
+          <h3 className="text-[15px] font-semibold leading-snug tracking-tight text-foreground transition-colors duration-200 group-hover:text-primary">
             {title}
           </h3>
-          {typeof badge === "string" ? <Badge variant="outline">{badge}</Badge> : badge}
+          {description && (
+            <div className="mt-1.5 line-clamp-3 text-[13px] leading-relaxed text-muted">
+              {description}
+            </div>
+          )}
+          {meta && <div className="mt-3 text-xs text-muted">{meta}</div>}
         </div>
-        {description && <div className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted">{description}</div>}
-        {meta && <div className="mt-4 text-xs text-muted">{meta}</div>}
+
         {actionLabel && (
-          <span className="mt-4 inline-flex h-9 w-full items-center justify-center rounded-xl border border-primary/25 bg-primary-soft text-sm font-medium text-primary transition-all group-hover:border-primary group-hover:bg-primary/20">
-            {actionLabel}
+          <span
+            className={cn(
+              "mt-auto inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold transition-all duration-200",
+              "border-border/50 bg-surface/30 text-foreground/85",
+              "group-hover:border-primary/35 group-hover:bg-primary/10 group-hover:text-primary",
+            )}
+          >
+            <span>{actionLabel.replace(/\s*→\s*$/, "")}</span>
+            <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
           </span>
         )}
       </div>

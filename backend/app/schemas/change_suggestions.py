@@ -11,20 +11,20 @@ ChangeType = Literal["metadata", "schema", "content", "technical", "capture-form
 ChangePriority = Literal["High", "Medium", "Low"]
 ChangeDestination = Literal["WordPress", "Webflow", "Wix", "Mailchimp"]
 ApprovalStatus = Literal["pending", "approved", "rejected"]
-ReportStatus = Literal["uploaded", "extracting", "ready", "failed"]
+SuggestionStatus = Literal["uploaded", "extracting", "ready", "failed"]
 
 
-# ── upload ────────────────────────────────────────────────────────────────────
+# ── create ────────────────────────────────────────────────────────────────────
 
-class ReportUploadRequest(BaseModel):
+class ChangeSuggestionCreateRequest(BaseModel):
     raw_content: str = Field(..., min_length=10)
     filename: str = Field(default="pasted-report", max_length=500)
 
 
-class ReportResponse(BaseModel):
+class ChangeSuggestionResponse(BaseModel):
     id: UUID
     filename: str
-    status: ReportStatus
+    status: SuggestionStatus
     extract_error: Optional[str]
     created_at: datetime
     updated_at: datetime
@@ -53,7 +53,7 @@ class ExtractedChangesEnvelope(BaseModel):
 
 class ChangeResponse(BaseModel):
     id: UUID
-    report_id: UUID
+    suggestion_id: UUID
     page_url: str
     change_type: ChangeType
     priority: ChangePriority
@@ -73,8 +73,8 @@ class ChangeResponse(BaseModel):
         return self.edited_content if self.edited_content is not None else self.proposed_content
 
 
-class ReportWithChanges(BaseModel):
-    report: ReportResponse
+class ChangeSuggestionWithChanges(BaseModel):
+    suggestion: ChangeSuggestionResponse
     changes: list[ChangeResponse]
 
 

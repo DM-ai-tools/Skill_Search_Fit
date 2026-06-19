@@ -16,5 +16,6 @@ $python = if (Test-Path $venvPython) { $venvPython } else { "python" }
 
 Write-Host "Starting SkillSearchFit API on http://${ListenHost}:$Port"
 Write-Host "Frontend should use NEXT_PUBLIC_API_URL=http://localhost:$Port/api/v1"
+Write-Host "After start, verify with: npm run dev:verify"
 
 & $python -m uvicorn app.main:app --reload --host $ListenHost --port $Port

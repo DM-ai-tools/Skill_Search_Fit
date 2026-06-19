@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 import { BentoActionTile, BentoGrid, BentoTile } from "@/components/bento";
 import { Button } from "@/components/ui/button";
 import { FileCheck2, FileText, Loader2, ShieldCheck, Sparkles, Upload } from "lucide-react";
-import { useReportReviewStore } from "@/stores/report-review-store";
-import { reportReviewApi } from "@/lib/report-review-api";
+import { useChangeSuggestionsStore } from "@/stores/change-suggestions-store";
+import { changeSuggestionsApi } from "@/lib/change-suggestions-api";
 import { formatApiError } from "@/lib/format-api-error";
 
 export function UploadStep() {
@@ -19,7 +19,7 @@ export function UploadStep() {
   const [error, setError] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const { loadReport } = useReportReviewStore();
+  const { loadSuggestion } = useChangeSuggestionsStore();
 
   const handleFile = (file: File) => {
     setFilename(file.name);
@@ -45,12 +45,12 @@ export function UploadStep() {
     setUploading(true);
 
     try {
-      const report = await reportReviewApi.upload(content, filename);
+      const suggestion = await changeSuggestionsApi.upload(content, filename);
       setUploading(false);
       setExtracting(true);
-      const withChanges = await reportReviewApi.extract(report.id);
-      loadReport(withChanges);
-      router.push(`/reports/plan?reportId=${report.id}`);
+      const withChanges = await changeSuggestionsApi.extract(suggestion.id);
+      loadSuggestion(withChanges);
+      router.push(`/reports/plan?suggestionId=${suggestion.id}`);
     } catch (err) {
       setError(formatApiError(err));
     } finally {

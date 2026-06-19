@@ -1,19 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useReportReviewStore } from "@/stores/report-review-store";
-import { reportReviewApi } from "@/lib/report-review-api";
-import type { ApprovalStatus, ChangeDestination } from "@/lib/report-review-api";
-import { ChangeCard } from "@/components/report-review/change-card";
-import { FilterBar, type Filters } from "@/components/report-review/filter-bar";
+import { useChangeSuggestionsStore } from "@/stores/change-suggestions-store";
+import { changeSuggestionsApi } from "@/lib/change-suggestions-api";
+import type { ApprovalStatus, ChangeDestination } from "@/lib/change-suggestions-api";
+import { ChangeCard } from "@/components/change-suggestions/change-card";
+import { FilterBar, type Filters } from "@/components/change-suggestions/filter-bar";
 import { Button } from "@/components/ui/button";
 import { formatApiError } from "@/lib/format-api-error";
 
 const DESTINATIONS: ChangeDestination[] = ["WordPress", "Webflow", "Wix", "Mailchimp"];
 
 export function ReviewStep() {
-  const { reportId, mergedChanges, setOverride, bulkApprove, bulkReject, setStep } =
-    useReportReviewStore();
+  const { suggestionId, mergedChanges, setOverride, bulkApprove, bulkReject, setStep } =
+    useChangeSuggestionsStore();
 
   const changes = mergedChanges();
 
@@ -57,9 +57,9 @@ export function ReviewStep() {
     changeId: string,
     update: { approval_status?: ApprovalStatus; edited_content?: string },
   ) => {
-    if (!reportId) return;
+    if (!suggestionId) return;
     try {
-      await reportReviewApi.patchChange(reportId, changeId, update);
+      await changeSuggestionsApi.patchChange(suggestionId, changeId, update);
     } catch (err) {
       setError(formatApiError(err));
     }

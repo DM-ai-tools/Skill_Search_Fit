@@ -49,3 +49,12 @@ export const SCAN_STATUS_LABELS: Record<ScanPhase, string> = {
   completed: "Completed",
   failed: "Analysis failed",
 };
+
+export function scanPhaseProgress(phase: ScanPhase): number {
+  if (phase === "scanning") return 25;
+  if (phase === "analyzing") return 50;
+  if (phase === "discovering_competitors") return 75;
+  if (phase === "generating") return 90;
+  if (phase === "completed") return 100;
+  return 0;
+}

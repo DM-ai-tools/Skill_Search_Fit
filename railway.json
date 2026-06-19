@@ -1,0 +1,15 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "services": {
+    "api": {
+      "rootDirectory": "backend",
+      "dockerfilePath": "Dockerfile",
+      "healthcheckPath": "/health"
+    },
+    "web": {
+      "rootDirectory": "frontend",
+      "dockerfilePath": "Dockerfile",
+      "healthcheckPath": "/"
+    }
+  }
+}

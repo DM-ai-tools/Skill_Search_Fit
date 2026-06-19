@@ -20,12 +20,17 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   fetchProjects: async () => {
     set({ loading: true });
-    const projects = await api.get<Project[]>("/projects");
-    set({ projects, loading: false });
-    if (!get().activeProjectId && projects.length > 0) {
-      set({ activeProjectId: projects[0].id });
+    try {
+      const projects = await api.get<Project[]>("/projects");
+      set({ projects, loading: false });
+      if (!get().activeProjectId && projects.length > 0) {
+        set({ activeProjectId: projects[0].id });
+      }
+      return projects;
+    } catch {
+      set({ loading: false });
+      return [];
     }
-    return projects;
   },
 
   createProject: async (name) => {

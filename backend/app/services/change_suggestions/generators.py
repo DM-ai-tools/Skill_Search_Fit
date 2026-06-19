@@ -7,7 +7,7 @@ import re
 from collections import defaultdict
 from typing import Any
 
-from app.schemas.reports import ChangeResponse
+from app.schemas.change_suggestions import ChangeResponse
 
 
 def _slug(url: str) -> str:

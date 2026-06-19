@@ -1,4 +1,4 @@
-/** Canonical 15 SearchFit SEO plugins — one entry per skill, no duplicates. */
+/** Canonical 14 SearchFit SEO plugins — one entry per skill, no duplicates. */
 type CanonicalPlugin = {
   slug: string;
   name: string;
@@ -50,12 +50,10 @@ export function normalizePluginList<T extends { plugin_name: string; category: s
 ): T[] {
   const bySlug = new Map<string, T>();
   for (const plugin of plugins) {
-    const slug = getPluginSlug(plugin.plugin_name);
     const canonical = resolveCanonical(plugin.plugin_name);
-    if (!canonical) {
-      if (!bySlug.has(slug)) bySlug.set(slug, plugin);
-      continue;
-    }
+    if (!canonical) continue;
+
+    const slug = canonical.slug;
     if (!bySlug.has(slug)) {
       bySlug.set(slug, {
         ...plugin,

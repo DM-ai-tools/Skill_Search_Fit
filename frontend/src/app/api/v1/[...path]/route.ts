@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND = process.env.API_PROXY_TARGET || "http://localhost:8000";
 const PROXY_TIMEOUT_MS = Number(process.env.API_PROXY_TIMEOUT_MS || 600_000);
+const PIPELINE_TIMEOUT_MS = 1_800_000; // 30 min per pipeline step
 
 export const maxDuration = 600;
 export const dynamic = "force-dynamic";
@@ -11,7 +12,8 @@ async function proxyToBackend(request: NextRequest, pathSegments: string[]) {
   const targetUrl = `${BACKEND}/api/v1/${pathSegments.join("/")}${search}`;
   const isLongRunning =
     pathSegments[0] === "execute" ||
-    (pathSegments[0] === "pipelines" && pathSegments[2] === "execute");
+    (pathSegments[0] === "pipelines" &&
+      (pathSegments[2] === "execute" || pathSegments[2] === "execute-step"));
 
   const headers = new Headers();
   const cookie = request.headers.get("cookie");
@@ -24,7 +26,7 @@ async function proxyToBackend(request: NextRequest, pathSegments: string[]) {
   const init: RequestInit = {
     method: request.method,
     headers,
-    signal: AbortSignal.timeout(PROXY_TIMEOUT_MS),
+    signal: AbortSignal.timeout(isLongRunning ? PIPELINE_TIMEOUT_MS : PROXY_TIMEOUT_MS),
   };
 
   if (request.method !== "GET" && request.method !== "HEAD") {

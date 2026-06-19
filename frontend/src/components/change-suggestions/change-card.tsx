@@ -4,7 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Check, X, Pencil, ChevronDown, ChevronUp } from "lucide-react";
-import type { ChangeResponse, ApprovalStatus } from "@/lib/report-review-api";
+import type { ChangeResponse, ApprovalStatus } from "@/lib/change-suggestions-api";
 
 // ── Priority rail color ───────────────────────────────────────────────────────
 
@@ -43,7 +43,7 @@ function DiffView({ current, proposed }: { current: string; proposed: string }) 
   return (
     <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
       {/* Current: dark, receding */}
-      <div className="rounded-xl border border-border/40 bg-background/60 p-3">
+      <div className="surface-nested rounded-xl border border-border/40 bg-background/60 p-3">
         <p className="mb-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-muted/60">
           Current
         </p>
@@ -52,7 +52,7 @@ function DiffView({ current, proposed }: { current: string; proposed: string }) 
         </p>
       </div>
       {/* Proposed: warm amber tint, coming forward */}
-      <div className="rounded-xl border border-primary/20 bg-primary-soft p-3">
+      <div className="surface-nested rounded-xl border border-primary/20 bg-primary-soft p-3">
         <p className="mb-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-primary/70">
           Proposed
         </p>
@@ -97,7 +97,7 @@ export function ChangeCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl border transition-all duration-200",
+        "surface-glow-target relative overflow-hidden rounded-2xl border transition-all duration-200",
         approvalStatus === "approved" &&
           "border-success/20 bg-success-soft/20 shadow-[0_4px_16px_rgba(34,197,94,0.08)]",
         approvalStatus === "rejected" &&

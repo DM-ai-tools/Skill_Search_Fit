@@ -3,21 +3,37 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { FileDown, Save } from "lucide-react";
 import { api } from "@/lib/api";
 import { displayPluginName } from "@/lib/plugin-catalog";
-import { reportReviewApi } from "@/lib/report-review-api";
+import { changeSuggestionsApi } from "@/lib/change-suggestions-api";
+import { formatApiError } from "@/lib/format-api-error";
+import { downloadReportPdf } from "@/lib/report-pdf";
+import { getExecutionMarkdown } from "@/lib/report-utils";
 import { parseMarkdownSections, pluginSuggestions } from "@/lib/plugin-report-presenters";
+import { fallbackSectionsFromMarkdown } from "@/lib/report-view-model";
+import { useProjectStore } from "@/stores/project-store";
+import {
+  cleanReportLine,
+  isTableSeparator,
+  parseTableRow,
+  stripFrontmatter,
+  stripMarkdown,
+} from "@/lib/report-text";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type ExecutionRecord = {
   id: string;
   plugin_id: string;
+  project_id?: string | null;
   status: string;
+  inputs?: Record<string, unknown>;
+  schema_version?: number;
   result: { markdown?: string; structured?: Record<string, unknown> } | null;
   error_message?: string | null;
 };
-
 type PluginLite = { id: string; plugin_name: string };
 type ReportBlockType = "paragraph" | "bullet" | "numbered" | "table";
 type ReportBlock = { type: ReportBlockType; text: string; index?: number; rows?: string[][] };
@@ -46,19 +62,6 @@ type StructuredSection = {
   sectionNumber?: number;
 };
 
-function parseTableRow(line: string): string[] {
-  return line
-    .trim()
-    .replace(/^\|/, "")
-    .replace(/\|$/, "")
-    .split("|")
-    .map((cell) => cell.trim());
-}
-
-function isTableSeparator(line: string): boolean {
-  return /^\|?[\s:-]+\|[\s|:-]+\|?$/.test(line.trim());
-}
-
 function parseBlocksFromBody(body: string): ReportBlock[] {
   const lines = body.split(/\r?\n/);
   const blocks: ReportBlock[] = [];
@@ -71,11 +74,30 @@ function parseBlocksFromBody(body: string): ReportBlock[] {
       continue;
     }
 
+    if (line.startsWith("```")) {
+      i += 1;
+      while (i < lines.length && !lines[i].trim().startsWith("```")) {
+        i += 1;
+      }
+      if (i < lines.length) i += 1;
+      continue;
+    }
+
+    if (/^>\s?/.test(line)) {
+      const text = cleanReportLine(line.replace(/^>\s?/, ""));
+      if (text) blocks.push({ type: "paragraph", text });
+      i += 1;
+      continue;
+    }
+
     if (line.startsWith("|")) {
       const rows: string[][] = [];
       while (i < lines.length && lines[i].trim().startsWith("|")) {
         const current = lines[i].trim();
-        if (!isTableSeparator(current)) rows.push(parseTableRow(current));
+        if (!isTableSeparator(current)) {
+          const row = parseTableRow(current).filter((cell) => cell.length > 0);
+          if (row.some((cell) => cell.length > 0)) rows.push(row);
+        }
         i += 1;
       }
       if (rows.length > 0) {
@@ -85,12 +107,15 @@ function parseBlocksFromBody(body: string): ReportBlock[] {
     }
 
     if (/^[-*]\s+/.test(line)) {
-      blocks.push({ type: "bullet", text: line.replace(/^[-*]\s+/, "") });
+      const text = cleanReportLine(line.replace(/^[-*]\s+/, ""));
+      if (text) blocks.push({ type: "bullet", text });
     } else if (/^\d+\.\s+/.test(line)) {
       const number = Number(line.match(/^(\d+)\./)?.[1] || blocks.length + 1);
-      blocks.push({ type: "numbered", text: line.replace(/^\d+\.\s+/, ""), index: number });
+      const text = cleanReportLine(line.replace(/^\d+\.\s+/, ""));
+      if (text) blocks.push({ type: "numbered", text, index: number });
     } else {
-      blocks.push({ type: "paragraph", text: line });
+      const text = cleanReportLine(line);
+      if (text) blocks.push({ type: "paragraph", text });
     }
     i += 1;
   }
@@ -103,11 +128,12 @@ function buildReportJson(
   execution: ExecutionRecord,
   markdown: string,
 ): PluginReportJson {
-  const parsed = parseMarkdownSections(markdown);
+  const cleaned = stripFrontmatter(markdown);
+  const parsed = parseMarkdownSections(cleaned);
   const sections =
     parsed.length > 0
       ? parsed.map((s) => ({ title: s.title, level: s.level, blocks: parseBlocksFromBody(s.body) }))
-      : [{ title: "Report", level: 2, blocks: parseBlocksFromBody(markdown) }];
+      : [{ title: "Report", level: 2, blocks: parseBlocksFromBody(cleaned) }];
   return {
     plugin_name: displayPluginName(pluginName),
     execution_id: execution.id,
@@ -125,7 +151,7 @@ function summarizeMetrics(report: PluginReportJson): ReportMetric {
     for (const block of section.blocks) {
       if (block.type === "bullet") totalBullets += 1;
       else if (block.type === "numbered") totalNumbered += 1;
-      else totalParagraphs += 1;
+      else if (block.type === "paragraph") totalParagraphs += 1;
     }
   }
   return {
@@ -137,29 +163,96 @@ function summarizeMetrics(report: PluginReportJson): ReportMetric {
 }
 
 function toStructuredSections(report: PluginReportJson): StructuredSection[] {
-  return report.sections.map((section, idx) => {
-    const m = section.title.match(/^(\d+)\.\s+(.+)$/);
-    return {
-      id: `section-${idx}`,
-      title: m?.[2] || section.title,
-      level: section.level,
-      blocks: section.blocks,
-      isNumbered: Boolean(m),
-      sectionNumber: m ? Number(m[1]) : undefined,
-    };
-  });
+  return report.sections
+    .map((section, idx) => {
+      const m = section.title.match(/^(\d+)\.\s+(.+)$/);
+      const blocks = section.blocks.filter(
+        (b) => b.type !== "paragraph" || b.text.length > 0,
+      );
+      if (blocks.length === 0) return null;
+      return {
+        id: `section-${idx}`,
+        title: stripMarkdown(m?.[2] || section.title),
+        level: section.level,
+        blocks,
+        isNumbered: Boolean(m),
+        sectionNumber: m ? Number(m[1]) : undefined,
+      };
+    })
+    .filter((s) => s !== null) as StructuredSection[];
 }
 
-function extractOverallScore(report: PluginReportJson): number | null {
-  for (const section of report.sections) {
-    for (const block of section.blocks) {
-      const m = block.text.match(/(\d{1,3})\s*\/\s*100/);
-      if (m) {
-        const score = Number(m[1]);
-        if (!Number.isNaN(score) && score >= 0 && score <= 100) return score;
-      }
+function parseScoreValue(raw: string): number | null {
+  const n = Number(raw);
+  if (Number.isNaN(n) || n < 0 || n > 100) return null;
+  return n;
+}
+
+function parseScoreFromText(text: string): number | null {
+  const cleaned = stripMarkdown(text);
+
+  const overallPatterns = [
+    /overall\s+score[^0-9]{0,24}(\d{1,3})\s*(?:\/\s*100|out\s+of\s+100)?/i,
+    /(?:site|seo|visibility|audit|technical)\s+score[^0-9]{0,16}(\d{1,3})\s*(?:\/\s*100|out\s+of\s+100)?/i,
+    /^score[:\s]+(\d{1,3})\s*(?:\/\s*100|out\s+of\s+100)?/i,
+  ];
+  for (const pattern of overallPatterns) {
+    const m = cleaned.match(pattern);
+    if (m) {
+      const score = parseScoreValue(m[1]);
+      if (score !== null) return score;
     }
   }
+
+  if (/score|overall|rating|visibility/i.test(cleaned)) {
+    const slash = cleaned.match(/(\d{1,3})\s*\/\s*100/);
+    if (slash) {
+      const score = parseScoreValue(slash[1]);
+      if (score !== null) return score;
+    }
+  }
+
+  return null;
+}
+
+function extractOverallScore(
+  report: PluginReportJson,
+  markdown?: string,
+  structured?: Record<string, unknown> | null,
+): number | null {
+  const structuredScore = structured?.overall_score ?? structured?.score;
+  if (typeof structuredScore === "number") {
+    const score = parseScoreValue(String(structuredScore));
+    if (score !== null) return score;
+  }
+
+  for (const section of report.sections) {
+    for (const block of section.blocks) {
+      if (block.type === "table" && block.rows) {
+        for (const row of block.rows) {
+          const rowText = row.join(" ");
+          if (/overall|total\s+score|^score$/i.test(rowText)) {
+            for (const cell of row) {
+              const fromCell = parseScoreFromText(cell);
+              if (fromCell !== null) return fromCell;
+            }
+          }
+          const fromRow = parseScoreFromText(rowText);
+          if (fromRow !== null) return fromRow;
+        }
+        continue;
+      }
+      const fromBlock = parseScoreFromText(block.text);
+      if (fromBlock !== null) return fromBlock;
+    }
+  }
+
+  if (markdown) {
+    const header = stripFrontmatter(markdown).slice(0, 2500);
+    const fromMarkdown = parseScoreFromText(header);
+    if (fromMarkdown !== null) return fromMarkdown;
+  }
+
   return null;
 }
 
@@ -174,14 +267,14 @@ function renderTable(rows: string[][]) {
   if (rows.length === 0) return null;
   const [header, ...body] = rows;
   return (
-    <div className="overflow-x-auto rounded-xl border border-border/60 bg-surface/40">
+    <div className="report-table-wrap surface-nested overflow-x-auto rounded-xl border border-border-strong bg-surface shadow-[inset_0_1px_0_rgba(244,241,236,0.06)]">
       <table className="w-full min-w-[480px] border-collapse text-sm">
         <thead>
-          <tr className="border-b border-border/60 bg-surface-elevated/80">
-            {header.map((cell) => (
+          <tr className="border-b border-primary/25 bg-primary/12">
+            {header.map((cell, i) => (
               <th
-                key={cell}
-                className="px-4 py-3 text-left font-mono text-[10px] font-semibold uppercase tracking-widest text-muted"
+                key={`${cell}-${i}`}
+                className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-foreground"
               >
                 {cell}
               </th>
@@ -190,9 +283,21 @@ function renderTable(rows: string[][]) {
         </thead>
         <tbody>
           {body.map((row, rowIdx) => (
-            <tr key={`row-${rowIdx}`} className="border-b border-border/30 last:border-0 hover:bg-surface/50">
+            <tr
+              key={`row-${rowIdx}`}
+              className={cn(
+                "border-b border-border/50 last:border-0 transition-colors hover:bg-primary/6",
+                rowIdx % 2 === 0 ? "bg-surface-elevated/80" : "bg-surface/60",
+              )}
+            >
               {row.map((cell, cellIdx) => (
-                <td key={`${rowIdx}-${cellIdx}`} className="px-4 py-3 align-top text-[14px] leading-7 text-foreground/90">
+                <td
+                  key={`${rowIdx}-${cellIdx}`}
+                  className={cn(
+                    "px-4 py-3.5 align-top text-[14px] leading-relaxed",
+                    cellIdx === 0 ? "font-medium text-foreground" : "text-foreground/85",
+                  )}
+                >
                   {cell}
                 </td>
               ))}
@@ -207,28 +312,34 @@ function renderTable(rows: string[][]) {
 function renderBlocks(blocks: ReportBlock[]) {
   return blocks.map((block, idx) => {
     if (block.type === "table" && block.rows) {
-      return <div key={`table-${idx}`}>{renderTable(block.rows)}</div>;
+      return <div key={`table-${idx}`} className="my-1">{renderTable(block.rows)}</div>;
     }
     if (block.type === "bullet") {
       return (
-        <div key={`${block.type}-${idx}`} className="flex items-start gap-3 rounded-xl border border-border/50 bg-surface/50 px-3 py-2.5">
-          <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-          <p className="text-[15px] leading-7 text-foreground/90">{block.text}</p>
+        <div
+          key={`${block.type}-${idx}`}
+          className="surface-nested flex items-start gap-3 rounded-lg border border-border-strong bg-surface-elevated/90 px-4 py-3"
+        >
+          <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
+          <p className="text-[15px] leading-relaxed text-foreground">{block.text}</p>
         </div>
       );
     }
     if (block.type === "numbered") {
       return (
-        <div key={`${block.type}-${idx}`} className="flex items-start gap-3 rounded-xl border border-border/50 bg-surface-elevated/60 px-3 py-2.5">
-          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/12 text-xs font-semibold tabular-nums text-primary">
+        <div
+          key={`${block.type}-${idx}`}
+          className="surface-nested flex items-start gap-3 rounded-lg border border-border-strong bg-surface px-4 py-3"
+        >
+          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/18 text-xs font-bold tabular-nums text-primary">
             {block.index ?? idx + 1}
           </span>
-          <p className="text-[15px] leading-7 text-foreground/90">{block.text}</p>
+          <p className="text-[15px] leading-relaxed text-foreground">{block.text}</p>
         </div>
       );
     }
     return (
-      <p key={`${block.type}-${idx}`} className="text-[15px] leading-8 tracking-[0.01em] text-foreground/90">
+      <p key={`${block.type}-${idx}`} className="text-[15px] leading-relaxed text-foreground/90">
         {block.text}
       </p>
     );
@@ -238,6 +349,7 @@ function renderBlocks(blocks: ReportBlock[]) {
 export default function ReportViewPage() {
   const params = useSearchParams();
   const router = useRouter();
+  const { activeProjectId } = useProjectStore();
   const executionId = params.get("executionId");
   const pluginId = params.get("pluginId");
 
@@ -245,7 +357,8 @@ export default function ReportViewPage() {
   const [pluginName, setPluginName] = useState("Plugin");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [showJson, setShowJson] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -275,17 +388,29 @@ export default function ReportViewPage() {
     };
   }, [executionId, pluginId]);
 
-  const markdown = execution?.result?.markdown?.trim() || "";
+  const markdown = useMemo(
+    () => getExecutionMarkdown(execution?.result ?? null, pluginName),
+    [execution, pluginName],
+  );
   const suggestions = useMemo(() => pluginSuggestions(pluginName), [pluginName]);
   const reportJson = useMemo(
     () => (execution && markdown ? buildReportJson(pluginName, execution, markdown) : null),
     [pluginName, execution, markdown],
   );
-  const structuredSections = useMemo(
-    () => (reportJson ? toStructuredSections(reportJson) : []),
-    [reportJson],
-  );
-  const overallScore = useMemo(() => (reportJson ? extractOverallScore(reportJson) : null), [reportJson]);
+  const structuredSections = useMemo(() => {
+    if (!reportJson) return [];
+    const base = toStructuredSections(reportJson);
+    if (!markdown) return base;
+    return [...base, ...fallbackSectionsFromMarkdown(markdown, base)];
+  }, [reportJson, markdown]);
+  const overallScore = useMemo(() => {
+    if (!reportJson) return null;
+    return extractOverallScore(
+      reportJson,
+      markdown,
+      execution?.result?.structured ?? null,
+    );
+  }, [reportJson, markdown, execution]);
   const metrics = useMemo(() => (reportJson ? summarizeMetrics(reportJson) : null), [reportJson]);
   const executiveSummary = useMemo(() => {
     if (!reportJson) return "No summary available.";
@@ -308,17 +433,50 @@ export default function ReportViewPage() {
   const sendToReview = async () => {
     if (!markdown) return;
     setSending(true);
+    setError("");
     try {
-      const report = await reportReviewApi.upload(
+      const suggestion = await changeSuggestionsApi.upload(
         markdown,
         `${displayPluginName(pluginName)}-${new Date().toISOString()}.md`,
       );
-      await reportReviewApi.extract(report.id);
-      router.push(`/reports/review?reportId=${report.id}`);
-    } catch {
-      setError("Could not send this report to Report Review.");
+      await changeSuggestionsApi.extract(suggestion.id);
+      router.push(`/reports/plan?suggestionId=${suggestion.id}`);
+    } catch (err) {
+      setError(formatApiError(err, "Could not send this report to Change Suggestions."));
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleDownloadPdf = () => {
+    if (!markdown) return;
+    downloadReportPdf(pluginName, markdown);
+  };
+
+  const handleSaveReport = async () => {
+    if (!execution?.result) return;
+    const projectId = execution.project_id || activeProjectId;
+    if (!projectId) {
+      setError("Select a project before saving this report.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    setSaveMessage("");
+    try {
+      await api.post("/outputs", {
+        project_id: projectId,
+        plugin_id: execution.plugin_id,
+        execution_id: execution.id,
+        input_snapshot: execution.inputs || {},
+        schema_version: execution.schema_version ?? 1,
+        generated_output: execution.result,
+      });
+      setSaveMessage("Report saved to project.");
+    } catch {
+      setError("Failed to save report.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -348,38 +506,59 @@ export default function ReportViewPage() {
       <div className="space-y-5">
         <Card className="glass-panel-strong overflow-hidden border-border/70">
           <CardHeader className="border-b border-border">
-            <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">Report</p>
-                <CardTitle className="mt-1 text-xl tracking-tight text-foreground">{displayPluginName(pluginName)}</CardTitle>
-                <p className="mt-1 text-xs text-muted">Prepared by SkillSearchFit • {new Date().toLocaleDateString()}</p>
+                <CardTitle className="mt-1 text-xl tracking-tight text-foreground">
+                  {displayPluginName(pluginName)}
+                </CardTitle>
+                <p className="mt-1 text-xs text-muted">
+                  Prepared by SkillSearchFit • {new Date().toLocaleDateString()}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={handleDownloadPdf}
+                >
+                  <FileDown className="h-4 w-4" />
+                  Download PDF
+                </Button>
+                <Button
+                  type="button"
+                  className="gap-2 shadow-[0_10px_22px_rgba(224,138,60,0.18)]"
+                  onClick={handleSaveReport}
+                  disabled={saving}
+                >
+                  <Save className="h-4 w-4" />
+                  {saving ? "Saving…" : "Save report"}
+                </Button>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="flex flex-wrap items-center gap-2 pt-4 text-sm text-muted">
-            <span className="rounded-full border border-border bg-surface/80 px-3 py-1">
-              Execution: <span className="font-medium text-foreground">{execution.id}</span>
-            </span>
-            <span className="rounded-full border border-border bg-surface/80 px-3 py-1">
-              Status: <span className="font-medium text-foreground">{execution.status}</span>
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-8 px-3 text-xs"
-              onClick={() => setShowJson((v) => !v)}
-            >
-              {showJson ? "Show Styled Report" : "Show JSON"}
-            </Button>
-          </CardContent>
+          {(saveMessage || error) && (
+            <CardContent className="pt-4">
+              {saveMessage && (
+                <p className="rounded-xl border border-success/25 bg-success-soft/20 px-4 py-2 text-sm text-success">
+                  {saveMessage}
+                </p>
+              )}
+              {error && (
+                <p className="mt-2 rounded-xl border border-destructive/25 bg-destructive-soft/20 px-4 py-2 text-sm text-destructive">
+                  {error}
+                </p>
+              )}
+            </CardContent>
+          )}
         </Card>
-
         <article className="glass-panel-strong space-y-6 rounded-2xl border-border/70 p-4 sm:p-6 lg:p-7">
-          {reportJson && metrics && !showJson && (
+          {reportJson && metrics && (
             <>
               <div className="bento-grid-4">
-                {overallScore !== null ? (
-                  <div className="bento-spotlight bento-hero flex flex-col justify-between">
+                {overallScore !== null && (
+                  <div className="bento-tile bento-hero flex flex-col justify-between">
                     <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted">
                       Overall Score
                     </p>
@@ -387,14 +566,7 @@ export default function ReportViewPage() {
                       {overallScore}
                       <span className="text-xl text-muted">/100</span>
                     </p>
-                    <p className="mt-1 text-sm font-medium">{scoreLabel(overallScore)}</p>
-                  </div>
-                ) : (
-                  <div className="bento-tile bento-hero flex flex-col justify-center">
-                    <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted">
-                      Overall Score
-                    </p>
-                    <p className="mt-2 text-4xl font-bold text-muted">—</p>
+                    <p className="mt-1 text-sm font-medium text-foreground">{scoreLabel(overallScore)}</p>
                   </div>
                 )}
                 <div className="bento-tile">
@@ -415,19 +587,26 @@ export default function ReportViewPage() {
                 </div>
               </div>
 
-              <section className="bento-tile bento-wide">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-muted">Executive Summary</p>
-                <p className="mt-2 text-[15px] leading-7 text-foreground/90">{executiveSummary}</p>
+              <section className="bento-tile bento-wide border-border-strong bg-surface-elevated/50">
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-primary/80">
+                  Executive Summary
+                </p>
+                <p className="mt-3 text-[15px] leading-relaxed text-foreground">{executiveSummary}</p>
               </section>
 
               {keyTakeaways.length > 0 && (
-                <section className="bento-tile bento-wide">
-                  <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted">Key Takeaways</p>
+                <section className="bento-tile bento-wide border-border-strong">
+                  <p className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-widest text-primary/80">
+                    Key Takeaways
+                  </p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {keyTakeaways.map((item) => (
-                      <div key={item} className="flex items-start gap-3 rounded-lg border border-border bg-surface-elevated px-3 py-2">
-                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-secondary" />
-                        <p className="text-sm leading-7 text-muted">{item}</p>
+                      <div
+                        key={item}
+                        className="surface-nested flex items-start gap-3 rounded-lg border border-border-strong bg-surface px-3 py-2.5"
+                      >
+                        <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-secondary" />
+                        <p className="text-sm leading-relaxed text-foreground">{item}</p>
                       </div>
                     ))}
                   </div>
@@ -441,7 +620,7 @@ export default function ReportViewPage() {
                     <a
                       key={`toc-${section.title}-${i}`}
                       href={`#${section.id}`}
-                      className="rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-foreground transition hover:border-border-strong hover:bg-surface"
+                      className="surface-nested rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-foreground"
                     >
                       {(section.sectionNumber ?? i + 1)}. {section.title}
                     </a>
@@ -451,31 +630,22 @@ export default function ReportViewPage() {
             </>
           )}
 
-          {showJson && reportJson ? (
-            <section className="rounded-xl border border-border/70 bg-background/70 p-4">
-              <h2 className="mb-3 text-base font-semibold">Converted JSON Output</h2>
-              <pre className="max-h-[70vh] overflow-auto rounded-lg bg-surface p-4 text-xs leading-6 text-foreground/90">
-                {JSON.stringify(reportJson, null, 2)}
-              </pre>
+          {structuredSections.map((section, i) => (
+            <section
+              id={section.id}
+              key={`${section.title}-${i}`}
+              className="group bento-tile space-y-4 border-border-strong bg-surface-elevated/40 p-4 sm:p-5"
+            >
+              <div className="flex items-center gap-3 border-b border-border-strong pb-3">
+                <span className="h-7 w-1 rounded-full bg-primary transition-all duration-300 group-hover:bg-primary-hover" />
+                <h2 className="text-lg font-semibold tracking-tight text-foreground">
+                  {section.sectionNumber ? `${section.sectionNumber}. ` : ""}
+                  {section.title}
+                </h2>
+              </div>
+              <div className="space-y-3">{renderBlocks(section.blocks)}</div>
             </section>
-          ) : (
-            structuredSections.map((section, i) => (
-              <section
-                id={section.id}
-                key={`${section.title}-${i}`}
-                className="group bento-tile space-y-4 p-4 sm:p-5"
-              >
-                <div className="flex items-center gap-3 border-b border-border/40 pb-3">
-                  <span className="h-6 w-1.5 rounded-full bg-primary/70 transition-all duration-300 group-hover:h-7 group-hover:bg-primary" />
-                  <h2 className="text-lg font-semibold tracking-tight text-foreground">
-                    {section.sectionNumber ? `${section.sectionNumber}. ` : ""}
-                    {section.title}
-                  </h2>
-                </div>
-                <div className="space-y-3">{renderBlocks(section.blocks)}</div>
-              </section>
-            ))
-          )}
+          ))}
         </article>
       </div>
 
@@ -511,7 +681,7 @@ export default function ReportViewPage() {
               {suggestions.map((s, i) => (
                 <li
                   key={s}
-                  className="rounded-xl border border-border/70 bg-surface/80 p-3 transition-all duration-300 hover:border-border-strong hover:bg-surface"
+                  className="surface-nested rounded-xl border border-border/70 bg-surface/80 p-3"
                 >
                   <div className="flex items-start gap-2.5">
                     <span className="mt-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
@@ -535,7 +705,7 @@ export default function ReportViewPage() {
               onClick={sendToReview}
               disabled={sending}
             >
-              {sending ? "Preparing..." : "Open in Report Review"}
+              {sending ? "Preparing..." : "Open in Change Suggestions"}
             </Button>
             <Link
               href="/plugins"
@@ -543,7 +713,9 @@ export default function ReportViewPage() {
             >
               Back to plugins
             </Link>
-            {error && <p className="text-xs text-destructive">{error}</p>}
+            {error && !saveMessage && (
+              <p className="text-xs text-destructive">{error}</p>
+            )}
           </CardContent>
         </Card>
       </aside>

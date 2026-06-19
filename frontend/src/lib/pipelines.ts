@@ -1,4 +1,4 @@
-import type { Pipeline } from "@/lib/types";
+import type { Pipeline, PipelineExecuteResponse, PipelineStepResult } from "@/lib/types";
 
 /** Static fallback — mirrors backend/app/data/pipelines.py and SEARCH~1.MD */
 export const STATIC_PIPELINES: Pipeline[] = [
@@ -67,4 +67,57 @@ export async function fetchPipelines(): Promise<Pipeline[]> {
   } catch {
     return STATIC_PIPELINES;
   }
+}
+
+function buildCombinedMarkdown(pipeline: Pipeline, steps: PipelineStepResult[]): string {
+  const sections = steps.map(
+    (step) => `### Step ${step.step}: ${step.label}\n\n${step.output_markdown}`,
+  );
+  return `# ${pipeline.name}\n\n${sections.join("\n\n")}`;
+}
+
+/** Run a pipeline one step at a time to avoid proxy timeouts and show real progress. */
+export async function executePipelineSteps(
+  pipelineId: string,
+  projectId: string,
+  inputs: Record<string, unknown>,
+  callbacks?: {
+    onStepStart?: (stepIndex: number) => void;
+    onStepComplete?: (step: PipelineStepResult) => void;
+  },
+): Promise<PipelineExecuteResponse> {
+  const pipeline = getPipelineById(pipelineId);
+  if (!pipeline) {
+    throw new Error("Pipeline not found");
+  }
+
+  const priorMarkdown: string[] = [];
+  const steps: PipelineStepResult[] = [];
+  const { api } = await import("@/lib/api");
+
+  for (let i = 0; i < pipeline.steps.length; i += 1) {
+    callbacks?.onStepStart?.(i);
+    const step = await api.post<PipelineStepResult>(`/pipelines/${pipelineId}/execute-step`, {
+      project_id: projectId,
+      inputs,
+      step_index: i + 1,
+      prior_markdown: priorMarkdown,
+    });
+    steps.push(step);
+    priorMarkdown.push(`### Step ${step.step}: ${step.label}\n\n${step.output_markdown}`);
+    callbacks?.onStepComplete?.(step);
+  }
+
+  return {
+    pipeline_id: pipelineId,
+    pipeline_name: pipeline.name,
+    status: "completed",
+    steps,
+    combined_markdown: buildCombinedMarkdown(pipeline, steps),
+    workflow_steps: steps.map((step) => ({
+      step: step.step,
+      label: step.label,
+      status: "done",
+    })),
+  };
 }

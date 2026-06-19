@@ -4,15 +4,15 @@ import { UploadStep } from "./_steps/upload-step";
 import { BentoSectionHeader } from "@/components/bento";
 import { Button } from "@/components/ui/button";
 import { RotateCcw } from "lucide-react";
-import { useReportReviewStore } from "@/stores/report-review-store";
+import { useChangeSuggestionsStore } from "@/stores/change-suggestions-store";
 
-export default function ReportReviewPage() {
-  const { reset } = useReportReviewStore();
+export default function ChangeSuggestionsPage() {
+  const { reset } = useChangeSuggestionsStore();
 
   return (
     <div className="space-y-8">
       <BentoSectionHeader
-        eyebrow="Report Review"
+        eyebrow="Change Suggestions"
         title="New Report"
         description="Upload an audit report and Claude will generate an implementation plan."
         actions={<Button

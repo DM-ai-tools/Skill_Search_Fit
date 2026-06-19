@@ -4,6 +4,30 @@ import json
 from app.config import settings
 
 
+def _inputs_to_markdown(inputs: dict) -> str:
+    lines = ["### Inputs received", ""]
+    for key, value in inputs.items():
+        label = key.replace("_", " ").strip().title()
+        if value is None or value == "":
+            continue
+        if isinstance(value, str) and "\n" in value:
+            lines.append(f"**{label}**")
+            for part in value.splitlines():
+                part = part.strip()
+                if part:
+                    lines.append(f"- {part}")
+            lines.append("")
+        elif isinstance(value, (list, tuple)):
+            lines.append(f"**{label}**")
+            for item in value:
+                if item:
+                    lines.append(f"- {item}")
+            lines.append("")
+        else:
+            lines.append(f"**{label}:** {value}")
+    return "\n".join(lines).strip()
+
+
 class StubAIExecutor:
     async def execute(
         self,
@@ -20,7 +44,7 @@ class StubAIExecutor:
             f"*Preview mode — add `ANTHROPIC_API_KEY` to `.env` for live Claude analysis*\n\n"
             f"This plugin received your inputs. Once Claude is configured, "
             f"it will run the full **system** and **primary** prompts from the plugin definition.\n\n"
-            f"### Inputs received\n```json\n{json.dumps(inputs, indent=2)}\n```"
+            f"{_inputs_to_markdown(inputs)}"
         )
         return {
             "markdown": markdown,

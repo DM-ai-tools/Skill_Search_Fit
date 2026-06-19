@@ -36,13 +36,13 @@ PUBLIC_AUTH_PATHS = {
 }
 
 
-def get_client_ip(request: Request) -> str:
+def get_client_ip(request: Request) -> str | None:
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
         return forwarded.split(",")[0].strip()
     if request.client:
         return request.client.host
-    return "unknown"
+    return None
 
 
 async def rate_limit_middleware(request: Request, call_next):

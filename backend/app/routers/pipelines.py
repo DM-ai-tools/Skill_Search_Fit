@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Request
+from uuid import UUID
+
+from fastapi import APIRouter, Query, Request
 
 from app.data.pipelines import PIPELINES
 from app.db.pool import get_pool
+from app.exceptions import not_found
 from app.middleware.rate_limit import get_client_ip
 from app.middleware.session import require_user
 from app.schemas.pipelines import (
@@ -9,9 +12,14 @@ from app.schemas.pipelines import (
     PipelineExecuteResponse,
     PipelineListItem,
     PipelineStep,
+    PipelineStepExecuteRequest,
     PipelineStepResult,
 )
-from app.services.execution.pipeline_runner import run_pipeline
+from app.services.execution.pipeline_runner import (
+    get_pipeline_recent_results,
+    run_pipeline,
+    run_pipeline_step,
+)
 
 router = APIRouter(prefix="/pipelines", tags=["pipelines"])
 
@@ -33,6 +41,47 @@ async def list_pipelines(request: Request):
     ]
 
 
+@router.get("/{pipeline_id}/recent-results", response_model=PipelineExecuteResponse)
+async def recent_pipeline_results(
+    request: Request,
+    pipeline_id: str,
+    project_id: UUID = Query(...),
+):
+    user = require_user(request)
+    pool = get_pool()
+    result = await get_pipeline_recent_results(
+        pool,
+        pipeline_id=pipeline_id,
+        project_id=project_id,
+        user_id=user.id,
+    )
+    if not result:
+        raise not_found("No completed pipeline results found for this project")
+    return PipelineExecuteResponse(**result)
+
+
+@router.post("/{pipeline_id}/execute-step", response_model=PipelineStepResult)
+async def execute_pipeline_step(
+    pipeline_id: str,
+    body: PipelineStepExecuteRequest,
+    request: Request,
+):
+    user = require_user(request)
+    ip = get_client_ip(request)
+    pool = get_pool()
+    result = await run_pipeline_step(
+        pool,
+        pipeline_id=pipeline_id,
+        step_index=body.step_index,
+        project_id=body.project_id,
+        base_inputs=body.inputs,
+        prior_markdown=body.prior_markdown,
+        user_id=user.id,
+        ip_address=ip,
+    )
+    return PipelineStepResult(**result)
+
+
 @router.post("/{pipeline_id}/execute", response_model=PipelineExecuteResponse)
 async def execute_pipeline(
     pipeline_id: str,
@@ -42,15 +91,14 @@ async def execute_pipeline(
     user = require_user(request)
     ip = get_client_ip(request)
     pool = get_pool()
-    async with pool.acquire() as conn:
-        result = await run_pipeline(
-            conn,
-            pipeline_id=pipeline_id,
-            project_id=body.project_id,
-            base_inputs=body.inputs,
-            user_id=user.id,
-            ip_address=ip,
-        )
+    result = await run_pipeline(
+        pool,
+        pipeline_id=pipeline_id,
+        project_id=body.project_id,
+        base_inputs=body.inputs,
+        user_id=user.id,
+        ip_address=ip,
+    )
     return PipelineExecuteResponse(
         pipeline_id=result["pipeline_id"],
         pipeline_name=result["pipeline_name"],

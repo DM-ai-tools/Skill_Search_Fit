@@ -5,13 +5,19 @@ from pathlib import Path
 
 import psycopg
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from app.config import normalize_database_url
+
 MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "migrations"
 
 
 def main() -> None:
-    database_url = os.environ.get(
-        "DATABASE_URL",
-        "postgresql://skillsearchfit:skillsearchfit@localhost:5432/skillsearchfit",
+    database_url = normalize_database_url(
+        os.environ.get(
+            "DATABASE_URL",
+            "postgresql://skillsearchfit:skillsearchfit@localhost:5432/skillsearchfit",
+        )
     )
 
     files = sorted(MIGRATIONS_DIR.glob("*.sql"))

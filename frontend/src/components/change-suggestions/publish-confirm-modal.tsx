@@ -1,7 +1,7 @@
 "use client";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import type { ChangeDestination } from "@/lib/report-review-api";
+import type { ChangeDestination } from "@/lib/change-suggestions-api";
 
 interface PublishConfirmModalProps {
   destination: ChangeDestination;

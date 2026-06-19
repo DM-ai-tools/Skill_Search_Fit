@@ -11,7 +11,8 @@ async def init_pool() -> None:
         settings.database_url,
         min_size=2,
         max_size=10,
-        command_timeout=60,
+        command_timeout=30,
+        max_inactive_connection_lifetime=300,
     )
 
 

@@ -13,6 +13,7 @@ class SignupRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+    remember: bool = False
 
 
 class UserResponse(BaseModel):

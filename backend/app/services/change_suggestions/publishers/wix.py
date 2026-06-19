@@ -7,7 +7,7 @@ import logging
 import httpx
 
 from app.config import settings
-from app.schemas.reports import ChangeResponse, PublishItemResult
+from app.schemas.change_suggestions import ChangeResponse, PublishItemResult
 
 logger = logging.getLogger(__name__)
 

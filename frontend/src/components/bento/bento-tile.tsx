@@ -22,7 +22,7 @@ export function BentoTile({
         span === "hero" && "bento-hero",
         span === "wide" && "bento-wide",
         span === "strip" && "bento-strip",
-        interactive && "transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30",
+        interactive && "cursor-pointer",
         className,
       )}
       {...props}

@@ -48,6 +48,15 @@ foreach ($proc in Get-CimInstance Win32_Process -Filter "name='python.exe'") {
     }
 }
 
+# 4) Orphan uvicorn reload workers (parent killed but child still holds port 8000).
+foreach ($proc in Get-CimInstance Win32_Process -Filter "name='python.exe'") {
+    $cmd = $proc.CommandLine
+    if (-not $cmd) { continue }
+    if ($cmd -match "multiprocessing\.spawn" -and $cmd -match "spawn_main") {
+        Stop-ProcId $proc.ProcessId "uvicorn worker"
+    }
+}
+
 Start-Sleep -Seconds 3
 
 $remaining = @()

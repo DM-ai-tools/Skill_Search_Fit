@@ -4,8 +4,9 @@ import { Download, FileJson, FileText, Copy, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { BentoActionTile, BentoGrid, BentoTile } from "@/components/bento";
 import { Button } from "@/components/ui/button";
-import type { ExecuteResponse } from "@/lib/types";
 import { displayPluginName } from "@/lib/plugin-catalog";
+import { getExecutionMarkdown } from "@/lib/report-utils";
+import type { ExecuteResponse } from "@/lib/types";
 
 function downloadBlob(content: string, filename: string, mime: string) {
   const blob = new Blob([content], { type: mime });
@@ -33,7 +34,7 @@ export function ReportDownloadPanel({
   saving?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
-  const markdown = result.output.markdown;
+  const markdown = getExecutionMarkdown(result.output, pluginName);
   const baseName = `${slugify(displayPluginName(pluginName))}-report`;
   const generatedAt = new Date().toLocaleString();
 

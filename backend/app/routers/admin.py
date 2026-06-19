@@ -130,20 +130,13 @@ async def update_user(user_id: UUID, body: AdminUserUpdate, request: Request):
     ip = get_client_ip(request)
     pool = get_pool()
     async with pool.acquire() as conn:
-        updates = []
-        if body.password:
-            await conn.execute(
-                "UPDATE users SET password_hash = $2 WHERE id = $1",
-                user_id,
-                hash_password(body.password),
-            )
-
         row = await conn.fetchrow(
             """
             UPDATE users
             SET name = COALESCE($2, name),
                 email = COALESCE($3, email),
-                role = COALESCE($4::user_role, role)
+                role = COALESCE($4::user_role, role),
+                password_hash = COALESCE($5, password_hash)
             WHERE id = $1
             RETURNING id, name, email, role::text, created_at, deleted_at
             """,
@@ -151,6 +144,7 @@ async def update_user(user_id: UUID, body: AdminUserUpdate, request: Request):
             body.name,
             body.email,
             body.role,
+            hash_password(body.password) if body.password else None,
         )
         if not row:
             raise not_found("User not found")

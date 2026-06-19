@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
 import { BentoGrid, BentoSectionHeader, BentoTile } from "@/components/bento";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -63,6 +64,18 @@ export default function ProfilePage() {
       )}
 
       <BentoGrid columns={2}>
+        <BentoTile variant="strong" className="space-y-4 sm:col-span-2">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="font-semibold text-foreground">Appearance</p>
+              <p className="mt-1 text-sm text-muted">
+                Switch between dark and light themes across the workspace, dashboard, plugins, and reports.
+              </p>
+            </div>
+            <ThemeToggle />
+          </div>
+        </BentoTile>
+
         <BentoTile variant="strong" className="space-y-4">
           <div>
             <p className="font-semibold text-foreground">Account</p>

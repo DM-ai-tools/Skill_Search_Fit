@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { ReportWithChanges, ChangeResponse, PublishItemResult } from "@/lib/report-review-api";
+import type { ChangeSuggestionWithChanges, ChangeResponse, PublishItemResult } from "@/lib/change-suggestions-api";
 
 export type WizardStep = "upload" | "review" | "publish";
 
@@ -11,9 +11,9 @@ export type LocalOverride = {
   editedContent?: string;
 };
 
-interface ReportReviewState {
+interface ChangeSuggestionsState {
   step: WizardStep;
-  reportId: string | null;
+  suggestionId: string | null;
   filename: string | null;
   changes: ChangeResponse[];
   /** Local overrides before PATCH is confirmed — keyed by change id */
@@ -22,7 +22,7 @@ interface ReportReviewState {
   publishDryRun: boolean;
 
   setStep: (step: WizardStep) => void;
-  loadReport: (data: ReportWithChanges) => void;
+  loadSuggestion: (data: ChangeSuggestionWithChanges) => void;
   setOverride: (changeId: string, override: Partial<LocalOverride>) => void;
   bulkApprove: (ids: string[]) => void;
   bulkReject: (ids: string[]) => void;
@@ -34,11 +34,11 @@ interface ReportReviewState {
 }
 
 const DEFAULT: Pick<
-  ReportReviewState,
-  "step" | "reportId" | "filename" | "changes" | "overrides" | "publishResults" | "publishDryRun"
+  ChangeSuggestionsState,
+  "step" | "suggestionId" | "filename" | "changes" | "overrides" | "publishResults" | "publishDryRun"
 > = {
   step: "upload",
-  reportId: null,
+  suggestionId: null,
   filename: null,
   changes: [],
   overrides: {},
@@ -46,17 +46,17 @@ const DEFAULT: Pick<
   publishDryRun: true,
 };
 
-export const useReportReviewStore = create<ReportReviewState>()(
+export const useChangeSuggestionsStore = create<ChangeSuggestionsState>()(
   persist(
     (set, get) => ({
       ...DEFAULT,
 
       setStep: (step) => set({ step }),
 
-      loadReport: (data) =>
+      loadSuggestion: (data) =>
         set({
-          reportId: data.report.id,
-          filename: data.report.filename,
+          suggestionId: data.suggestion.id,
+          filename: data.suggestion.filename,
           changes: data.changes,
           overrides: {},
           publishResults: null,
@@ -107,9 +107,9 @@ export const useReportReviewStore = create<ReportReviewState>()(
       },
     }),
     {
-      name: "report-review-store",
+      name: "change-suggestions-store",
       partialize: (s) => ({
-        reportId: s.reportId,
+        suggestionId: s.suggestionId,
         filename: s.filename,
         step: s.step,
         changes: s.changes,

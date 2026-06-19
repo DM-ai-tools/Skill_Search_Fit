@@ -29,15 +29,15 @@ async def execute_plugin(plugin_id: UUID, body: ExecuteRequest, request: Request
     pool = get_pool()
     async with pool.acquire() as conn:
         enriched_inputs = await enrich_inputs_from_cache(conn, body.inputs)
-        result = await run_plugin(
-            conn,
-            plugin_id=plugin_id,
-            project_id=body.project_id,
-            inputs=enriched_inputs,
-            schema_version=body.schema_version,
-            user_id=user.id,
-            ip_address=ip,
-        )
+    result = await run_plugin(
+        pool,
+        plugin_id=plugin_id,
+        project_id=body.project_id,
+        inputs=enriched_inputs,
+        schema_version=body.schema_version,
+        user_id=user.id,
+        ip_address=ip,
+    )
     return ExecuteResponse(**result)
 
 

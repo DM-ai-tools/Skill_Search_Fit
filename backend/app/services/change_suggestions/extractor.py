@@ -11,7 +11,7 @@ import anthropic
 from pydantic import ValidationError
 
 from app.config import settings
-from app.schemas.reports import ChangeSchema, ExtractedChangesEnvelope
+from app.schemas.change_suggestions import ChangeSchema, ExtractedChangesEnvelope
 
 logger = logging.getLogger(__name__)
 

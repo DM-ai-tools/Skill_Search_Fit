@@ -1,0 +1,19 @@
+# Root dockerignore for monorepo builds (service Dockerfiles use their own context)
+.git
+.gitignore
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.local.example
+**/node_modules
+**/.venv
+**/venv
+**/__pycache__
+**/.next
+**/.pytest_cache
+**/.mypy_cache
+*.md
+.idea
+.vscode
+.DS_Store
+Thumbs.db

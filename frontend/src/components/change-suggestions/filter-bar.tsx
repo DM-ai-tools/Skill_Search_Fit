@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { Select as UiSelect } from "@/components/ui/select";
-import type { ChangeDestination, ChangePriority, ChangeType } from "@/lib/report-review-api";
+import type { ChangeDestination, ChangePriority, ChangeType } from "@/lib/change-suggestions-api";
 
 export type Filters = {
   search: string;
