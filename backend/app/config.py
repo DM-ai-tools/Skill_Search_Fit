@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-4-6"
     anthropic_max_tokens: int = 16384
+    change_suggestions_extraction_max_tokens: int = 16384
     openrouter_api_key: str = ""
     openrouter_model: str = "perplexity/sonar-pro"
     openrouter_fallback_model: str = "perplexity/sonar"
