@@ -26,6 +26,7 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return normalize_database_url(value)
         return value
+
     session_secret: str = "dev-session-secret-change-in-production-32b"
     session_max_age: int = 604800
     csrf_secret: str = "dev-csrf-secret-change-in-production-32b"
@@ -65,6 +66,8 @@ class Settings(BaseSettings):
     # Mailchimp
     mailchimp_api_key: str = ""
     mailchimp_server_prefix: str = "us1"
+    mailchimp_from_name: str = ""
+    mailchimp_from_email: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:

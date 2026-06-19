@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND = process.env.API_PROXY_TARGET || "http://localhost:8000";
+import {
+  getApiProxyTarget,
+  proxyMisconfigurationHint,
+} from "@/lib/backend-proxy";
+
 const PROXY_TIMEOUT_MS = Number(process.env.API_PROXY_TIMEOUT_MS || 600_000);
 const PIPELINE_TIMEOUT_MS = 1_800_000; // 30 min per pipeline step
 
@@ -8,6 +12,21 @@ export const maxDuration = 600;
 export const dynamic = "force-dynamic";
 
 async function proxyToBackend(request: NextRequest, pathSegments: string[]) {
+  const BACKEND = getApiProxyTarget();
+  const misconfig = proxyMisconfigurationHint(BACKEND);
+  if (misconfig) {
+    console.error("[api-proxy] misconfigured:", misconfig);
+    return NextResponse.json(
+      {
+        error: {
+          code: "PROXY_MISCONFIGURED",
+          message: misconfig,
+        },
+      },
+      { status: 503 },
+    );
+  }
+
   const search = request.nextUrl.search;
   const targetUrl = `${BACKEND}/api/v1/${pathSegments.join("/")}${search}`;
   const isLongRunning =
@@ -53,11 +72,17 @@ async function proxyToBackend(request: NextRequest, pathSegments: string[]) {
 
     return response;
   } catch (err) {
+    console.error(
+      `[api-proxy] ${request.method} ${targetUrl} failed after ${Date.now() - startedAt}ms:`,
+      err,
+    );
     return NextResponse.json(
       {
         error: {
           code: "PROXY_ERROR",
-          message: "API proxy timed out or failed. Ensure the backend is running on port 8000.",
+          message:
+            "API proxy could not reach the backend. Verify API_PROXY_TARGET on the frontend Railway service.",
+          backend: BACKEND.replace(/\/\/[^@]+@/, "//***@"),
         },
       },
       { status: 504 },

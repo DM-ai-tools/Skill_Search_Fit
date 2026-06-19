@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FileDown, Save } from "lucide-react";
 import { api } from "@/lib/api";
@@ -23,6 +23,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ChangeSuggestionsPanel } from "@/components/change-suggestions/change-suggestions-panel";
 
 type ExecutionRecord = {
   id: string;
@@ -348,7 +349,6 @@ function renderBlocks(blocks: ReportBlock[]) {
 
 export default function ReportViewPage() {
   const params = useSearchParams();
-  const router = useRouter();
   const { activeProjectId } = useProjectStore();
   const executionId = params.get("executionId");
   const pluginId = params.get("pluginId");
@@ -358,6 +358,8 @@ export default function ReportViewPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [panelSuggestionId, setPanelSuggestionId] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -440,7 +442,8 @@ export default function ReportViewPage() {
         `${displayPluginName(pluginName)}-${new Date().toISOString()}.md`,
       );
       await changeSuggestionsApi.extract(suggestion.id);
-      router.push(`/reports/plan?suggestionId=${suggestion.id}`);
+      setPanelSuggestionId(suggestion.id);
+      setPanelOpen(true);
     } catch (err) {
       setError(formatApiError(err, "Could not send this report to Change Suggestions."));
     } finally {
@@ -502,6 +505,7 @@ export default function ReportViewPage() {
   }
 
   return (
+    <>
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div className="space-y-5">
         <Card className="glass-panel-strong overflow-hidden border-border/70">
@@ -720,6 +724,13 @@ export default function ReportViewPage() {
         </Card>
       </aside>
     </div>
+
+    <ChangeSuggestionsPanel
+      open={panelOpen}
+      suggestionId={panelSuggestionId}
+      onClose={() => setPanelOpen(false)}
+    />
+    </>
   );
 }
 

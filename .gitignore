@@ -10,6 +10,9 @@ __pycache__/
 .env.local
 backend/.env
 frontend/.env.local
+!backend/.env.example
+!frontend/.env.local.example
+!railway.env.example
 
 # Build
 frontend/.next/

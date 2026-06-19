@@ -49,8 +49,8 @@ async def publish(
                     "settings": {
                         "subject_line": payload["subject_line"],
                         "preview_text": payload["preview_text"],
-                        "from_name": "Content Team",
-                        "reply_to": "",
+                        "from_name": settings.mailchimp_from_name or "Content Team",
+                        "reply_to": settings.mailchimp_from_email,
                     },
                 },
             )

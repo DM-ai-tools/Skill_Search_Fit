@@ -62,7 +62,7 @@ async def publish(
                     continue
 
                 page_id = page["id"]
-                content = change.edited_content if (change := c).edited_content is not None else c.proposed_content
+                content = c.effective_content
                 label = c.field_label.lower()
 
                 seo_data: dict = {}
