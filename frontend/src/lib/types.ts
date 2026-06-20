@@ -4,6 +4,7 @@ export interface User {
   email: string;
   role: "user" | "admin";
   created_at: string;
+  is_impersonating?: boolean;
 }
 
 export interface Project {
@@ -154,6 +155,8 @@ export interface AdminDashboardStats {
   executions_last_7_days: number;
   new_signups_last_7_days: number;
   total_saved_outputs: number;
+  total_plugins: number;
+  enabled_plugins: number;
   top_plugins_last_30_days: {
     plugin_id: string;
     plugin_name: string;
@@ -168,4 +171,41 @@ export interface ActivityLog {
   timestamp: string;
   user_name: string | null;
   user_email: string | null;
+  ip_address?: string | null;
+}
+
+export interface AdminUserRow extends User {
+  deleted_at?: string | null;
+  total_executions?: number;
+  total_projects?: number;
+}
+
+export interface AdminReportListItem {
+  id: string;
+  status: string;
+  started_at: string;
+  completed_at: string | null;
+  error_message: string | null;
+  user_id: string;
+  user_name: string;
+  user_email: string;
+  plugin_id: string;
+  plugin_name: string;
+  project_id: string | null;
+  project_name: string | null;
+}
+
+export interface AdminReportDetail extends AdminReportListItem {
+  inputs: Record<string, unknown>;
+  result: Record<string, unknown> | null;
+  schema_version: number;
+}
+
+export interface AdminConfigEntry {
+  key: string;
+  display_key: string;
+  value: string;
+  is_secret: boolean;
+  category: string;
+  description: string;
 }

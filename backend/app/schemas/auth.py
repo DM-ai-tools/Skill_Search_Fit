@@ -22,6 +22,7 @@ class UserResponse(BaseModel):
     email: str
     role: str
     created_at: datetime
+    is_impersonating: bool = False
 
 
 class UpdateProfileRequest(BaseModel):

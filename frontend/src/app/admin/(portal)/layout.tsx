@@ -10,7 +10,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="flex min-h-screen bg-background">
         <AdminSidebar />
         <div className="flex min-w-0 flex-1 flex-col">
-          <AppHeader title="Admin Portal" />
+          <AppHeader title="Admin Portal" hideSiteUrl hideProjectControls />
           <main className="flex-1 overflow-auto p-6">
             <div className="mx-auto max-w-[1400px]">{children}</div>
           </main>

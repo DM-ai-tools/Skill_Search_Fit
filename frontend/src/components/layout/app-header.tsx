@@ -14,10 +14,12 @@ export function AppHeader({
   title,
   compact = false,
   hideSiteUrl = false,
+  hideProjectControls = false,
 }: {
   title?: string;
   compact?: boolean;
   hideSiteUrl?: boolean;
+  hideProjectControls?: boolean;
 }) {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -70,7 +72,7 @@ export function AppHeader({
               {SCAN_STATUS_LABELS[phase]}
             </span>
           )}
-          <HeaderProjectControls />
+          {!hideProjectControls && <HeaderProjectControls />}
 
           <span className="hidden text-xs text-muted sm:block">{user?.name}</span>
 

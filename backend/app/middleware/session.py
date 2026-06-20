@@ -29,11 +29,23 @@ PUBLIC_PATHS = {
 
 
 class CurrentUser:
-    def __init__(self, id: UUID, name: str, email: str, role: str):
+    def __init__(
+        self,
+        id: UUID,
+        name: str,
+        email: str,
+        role: str,
+        is_impersonating: bool = False,
+        original_admin_id: str | None = None,
+        original_session_id: str | None = None,
+    ):
         self.id = id
         self.name = name
         self.email = email
         self.role = role
+        self.is_impersonating = is_impersonating
+        self.original_admin_id = original_admin_id
+        self.original_session_id = original_session_id
 
     @property
     def is_admin(self) -> bool:
@@ -89,7 +101,8 @@ async def delete_session(conn: asyncpg.Connection, session_id: UUID) -> None:
 async def load_session(conn: asyncpg.Connection, session_id: UUID) -> SessionData | None:
     row = await conn.fetchrow(
         """
-        SELECT s.id, s.csrf_token, s.expires_at, u.id AS user_id, u.name, u.email, u.role::text
+        SELECT s.id, s.csrf_token, s.expires_at, s.data,
+               u.id AS user_id, u.name, u.email, u.role::text
         FROM sessions s
         JOIN users u ON u.id = s.user_id
         WHERE s.id = $1 AND u.deleted_at IS NULL
@@ -106,7 +119,16 @@ async def load_session(conn: asyncpg.Connection, session_id: UUID) -> SessionDat
         await delete_session(conn, session_id)
         return None
 
-    user = CurrentUser(row["user_id"], row["name"], row["email"], row["role"])
+    session_data: dict = row["data"] if isinstance(row["data"], dict) else json.loads(row["data"] or "{}")
+    user = CurrentUser(
+        id=row["user_id"],
+        name=row["name"],
+        email=row["email"],
+        role=row["role"],
+        is_impersonating=session_data.get("impersonating", False),
+        original_admin_id=session_data.get("original_admin_id"),
+        original_session_id=session_data.get("original_session_id"),
+    )
     return SessionData(row["id"], user, row["csrf_token"])
 
 
