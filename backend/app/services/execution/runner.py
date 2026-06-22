@@ -10,6 +10,7 @@ from app.services.activity import log_activity
 from app.services.execution.ai_executor import get_ai_executor
 from app.services.execution.stubs import prompt_loader, response_processor
 from app.services.validation import validate_plugin_inputs
+from app.services.change_suggestions.live_page_content import enrich_live_audit_inputs
 
 
 async def run_plugin(
@@ -58,6 +59,8 @@ async def run_plugin(
             else plugin["input_fields"]
         )
         validate_plugin_inputs(input_fields, inputs)
+
+        inputs = await enrich_live_audit_inputs(inputs, input_fields)
 
         execution_id = await conn.fetchval(
             """

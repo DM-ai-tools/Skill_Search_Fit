@@ -395,7 +395,7 @@ export function PipelineView({
             </div>
             {showCompetitorsField && (
               <div>
-                <Label htmlFor="competitors">Competitors (one per line, optional)</Label>
+                <Label htmlFor="competitors">Competitors (one per line)</Label>
                 <Textarea
                   id="competitors"
                   value={competitors}
@@ -475,9 +475,14 @@ export function PipelineView({
                 Pipeline complete — {result.steps.length} steps finished
               </div>
             )}
-            <p className="mb-3 shrink-0 text-xs font-medium uppercase tracking-wide text-muted">
-              Step {activeStep + 1}: {pipeline.steps[activeStep]?.label}
-            </p>
+            <div className="mb-3 shrink-0">
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted">
+                Step {activeStep + 1} · {pipeline.steps[activeStep]?.label}
+              </p>
+              <h2 className="mt-0.5 text-lg font-semibold tracking-tight text-foreground">
+                {displayPluginName(selectedStep.plugin_name)}
+              </h2>
+            </div>
             <PluginReportOutput
               result={toExecuteResponse(selectedStep)}
               pluginName={selectedStep.plugin_name}

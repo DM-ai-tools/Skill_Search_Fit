@@ -146,13 +146,7 @@ export default function AdminReportsPage() {
 
               {/* Inline detail panel */}
               {detail?.id === r.id && (
-                <div
-                  className="mt-1 overflow-hidden rounded-xl border border-border/40"
-                  style={{
-                    background: "rgba(20,26,36,0.82)",
-                    backdropFilter: "blur(24px) saturate(180%) brightness(1.08)",
-                  }}
-                >
+                <div className="glass-panel-strong mt-1 overflow-hidden rounded-xl">
                   <div className="space-y-3 p-4">
                     <p className="text-xs font-semibold uppercase tracking-widest text-muted">Inputs</p>
                     <pre className="overflow-auto rounded-xl border border-border/30 bg-background/60 p-3 text-xs text-foreground/80">

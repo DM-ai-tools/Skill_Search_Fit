@@ -6,6 +6,7 @@ import Link from "next/link";
 import { FileDown, Save } from "lucide-react";
 import { api } from "@/lib/api";
 import { displayPluginName } from "@/lib/plugin-catalog";
+import { resolveExecutionSiteUrl } from "@/lib/site-url";
 import { changeSuggestionsApi } from "@/lib/change-suggestions-api";
 import { formatApiError } from "@/lib/format-api-error";
 import { downloadReportPdf } from "@/lib/report-pdf";
@@ -13,6 +14,8 @@ import { getExecutionMarkdown } from "@/lib/report-utils";
 import { parseMarkdownSections, pluginSuggestions } from "@/lib/plugin-report-presenters";
 import { fallbackSectionsFromMarkdown } from "@/lib/report-view-model";
 import { useProjectStore } from "@/stores/project-store";
+import { useChangeSuggestionsStore } from "@/stores/change-suggestions-store";
+import { useChangeSuggestionsPreloadStore } from "@/stores/change-suggestions-preload-store";
 import {
   cleanReportLine,
   isTableSeparator,
@@ -268,7 +271,7 @@ function renderTable(rows: string[][]) {
   if (rows.length === 0) return null;
   const [header, ...body] = rows;
   return (
-    <div className="report-table-wrap surface-nested overflow-x-auto rounded-xl border border-border-strong bg-surface shadow-[inset_0_1px_0_rgba(244,241,236,0.06)]">
+    <div className="report-table-wrap surface-nested surface-inset-edge overflow-x-auto rounded-xl border border-border-strong bg-surface">
       <table className="w-full min-w-[480px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-primary/25 bg-primary/12">
@@ -363,6 +366,13 @@ export default function ReportViewPage() {
   const [saveMessage, setSaveMessage] = useState("");
   const [error, setError] = useState("");
 
+  // Preload store — gives instant panel open when data is already cached
+  const preloadCache = useChangeSuggestionsPreloadStore((s) => s.cache);
+  const preload = useChangeSuggestionsPreloadStore((s) => s.preload);
+  const retryPreload = useChangeSuggestionsPreloadStore((s) => s.retry);
+  const preloadEntry = execution?.id ? preloadCache[execution.id] : undefined;
+  const siteUrl = resolveExecutionSiteUrl(execution?.inputs);
+
   useEffect(() => {
     if (!executionId) {
       setError("Missing executionId.");
@@ -432,8 +442,43 @@ export default function ReportViewPage() {
       .slice(0, 4);
   }, [structuredSections]);
 
+  // Kick off background preload as soon as report data is ready
+  useEffect(() => {
+    if (!execution?.id || !markdown) return;
+    preload(execution.id, markdown, pluginName, siteUrl);
+  // preload is a stable Zustand action reference
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [execution?.id, markdown, pluginName, siteUrl]);
+
+  // When preload finishes while panel is already open, push data into the panel immediately
+  useEffect(() => {
+    if (!panelOpen || preloadEntry?.status !== "ready" || !preloadEntry.data) return;
+    const { suggestionId: storedId } = useChangeSuggestionsStore.getState();
+    if (storedId === preloadEntry.data.suggestion.id) return;
+    useChangeSuggestionsStore.getState().loadSuggestion(preloadEntry.data);
+    setPanelSuggestionId(preloadEntry.data.suggestion.id);
+  // Intentionally narrow: only re-run when these two values change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panelOpen, preloadEntry?.status]);
+
   const sendToReview = async () => {
     if (!markdown) return;
+    if (preloadEntry?.status === "ready" && preloadEntry.data) {
+      // Preload done — open instantly from cache
+      useChangeSuggestionsStore.getState().loadSuggestion(preloadEntry.data);
+      setPanelSuggestionId(preloadEntry.data.suggestion.id);
+      setPanelOpen(true);
+      return;
+    }
+    if (preloadEntry?.status === "loading") {
+      setPanelOpen(true);
+      return;
+    }
+    if (preloadEntry?.status === "error") {
+      setPanelOpen(true);
+      return;
+    }
+    // Fallback: preload not available
     setSending(true);
     setError("");
     try {
@@ -441,7 +486,8 @@ export default function ReportViewPage() {
         markdown,
         `${displayPluginName(pluginName)}-${new Date().toISOString()}.md`,
       );
-      await changeSuggestionsApi.extract(suggestion.id);
+      const data = await changeSuggestionsApi.extract(suggestion.id);
+      useChangeSuggestionsStore.getState().loadSuggestion(data);
       setPanelSuggestionId(suggestion.id);
       setPanelOpen(true);
     } catch (err) {
@@ -705,11 +751,20 @@ export default function ReportViewPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             <Button
-              className="w-full shadow-[0_10px_22px_rgba(224,138,60,0.18)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(224,138,60,0.24)]"
+              className="relative w-full shadow-[0_10px_22px_rgba(224,138,60,0.18)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(224,138,60,0.24)]"
               onClick={sendToReview}
               disabled={sending}
             >
-              {sending ? "Preparing..." : "Open in Change Suggestions"}
+              {sending
+                ? "Preparing..."
+                : preloadEntry?.status === "ready"
+                  ? `Change Suggestions (${preloadEntry.data?.changes.length ?? 0} ready)`
+                  : preloadEntry?.status === "loading"
+                    ? "Change Suggestions..."
+                    : "Open in Change Suggestions"}
+              {preloadEntry?.status === "ready" && (
+                <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-success ring-2 ring-background" />
+              )}
             </Button>
             <Link
               href="/plugins"
@@ -729,6 +784,13 @@ export default function ReportViewPage() {
       open={panelOpen}
       suggestionId={panelSuggestionId}
       onClose={() => setPanelOpen(false)}
+      preloading={panelOpen && !panelSuggestionId && !!preloadEntry && preloadEntry.status === "loading"}
+      preloadError={preloadEntry?.status === "error" ? preloadEntry.error : null}
+      onRetryPreload={
+        execution?.id && markdown
+          ? () => retryPreload(execution.id, markdown, pluginName, siteUrl)
+          : undefined
+      }
     />
     </>
   );

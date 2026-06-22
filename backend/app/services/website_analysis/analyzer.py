@@ -202,6 +202,29 @@ def _heuristic_analysis(url: str, crawl: dict[str, Any]) -> dict[str, Any]:
     return base
 
 
+def _crawl_payload_for_cache(crawl: dict[str, Any]) -> dict[str, Any]:
+    """Persist crawl evidence for autofill and live audits (trimmed for storage)."""
+    pages = []
+    for page in crawl.get("pages", [])[:30]:
+        if not isinstance(page, dict):
+            continue
+        pages.append(
+            {
+                "url": page.get("url"),
+                "status": page.get("status"),
+                "meta": page.get("meta", {}),
+                "snippet": str(page.get("snippet", ""))[:3000],
+            }
+        )
+    return {
+        "base_url": crawl.get("base_url"),
+        "pages_crawled": crawl.get("pages_crawled", 0),
+        "partial": crawl.get("partial", False),
+        "pages": pages,
+        "metadata": crawl.get("metadata", {}),
+    }
+
+
 def _heuristic_quick_audit(crawl: dict[str, Any], analysis: dict[str, Any]) -> dict[str, Any]:
     pages_crawled = int(crawl.get("pages_crawled", 0) or 0)
     meta = crawl.get("metadata", {}) if isinstance(crawl.get("metadata"), dict) else {}
@@ -332,7 +355,7 @@ async def analyze_website(url: str) -> dict[str, Any]:
         return {
             "url": normalized,
             "scan_status": scan_status,
-            "crawl": {"pages_crawled": crawl.get("pages_crawled", 0), "partial": crawl.get("partial", False)},
+            "crawl": _crawl_payload_for_cache(crawl),
             "analysis": analysis,
             "competitors": [],
             "competitor_discovery_status": "skipped",
@@ -478,10 +501,7 @@ async def analyze_website(url: str) -> dict[str, Any]:
     return {
         "url": normalized,
         "scan_status": scan_status,
-        "crawl": {
-            "pages_crawled": crawl.get("pages_crawled", 0),
-            "partial": crawl.get("partial", False),
-        },
+        "crawl": _crawl_payload_for_cache(crawl),
         "analysis": analysis,
         "competitors": competitors,
         "competitor_discovery_status": competitor_discovery_status,

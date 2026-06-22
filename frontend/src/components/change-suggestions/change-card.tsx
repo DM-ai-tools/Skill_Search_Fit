@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Check, X, Pencil, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, X, Pencil, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import type { ChangeResponse, ApprovalStatus } from "@/lib/change-suggestions-api";
+import { ChangeTypeView } from "@/components/change-suggestions/change-type-views";
 
 // ── Priority rail color ───────────────────────────────────────────────────────
 
@@ -37,32 +38,50 @@ function Label({
   );
 }
 
-// ── Diff panel ────────────────────────────────────────────────────────────────
+function sourceUrlHref(url: string): string | null {
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith("/")) return null;
+  return `https://${trimmed}`;
+}
 
-function DiffView({ current, proposed }: { current: string; proposed: string }) {
+function SourceUrl({ url }: { url: string }) {
+  const trimmed = url.trim();
+  const href = sourceUrlHref(trimmed);
+
   return (
-    <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-      {/* Current: dark, receding */}
-      <div className="surface-nested rounded-xl border border-border/40 bg-background/60 p-3">
-        <p className="mb-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-muted/60">
-          Current
-        </p>
-        <p className="whitespace-pre-wrap leading-relaxed text-muted">
-          {current || <span className="italic text-muted/40">(empty)</span>}
-        </p>
-      </div>
-      {/* Proposed: warm amber tint, coming forward */}
-      <div className="surface-nested rounded-xl border border-primary/20 bg-primary-soft p-3">
-        <p className="mb-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-primary/70">
-          Proposed
-        </p>
-        <p className="whitespace-pre-wrap leading-relaxed text-foreground">
-          {proposed || <span className="italic text-muted">(empty)</span>}
-        </p>
-      </div>
+    <div className="mt-2.5 flex min-w-0 items-center gap-2 rounded-lg border border-border bg-surface-elevated px-2.5 py-1.5">
+      <ExternalLink className="h-3 w-3 shrink-0 text-muted/70" aria-hidden />
+      <span className="shrink-0 font-mono text-[10px] font-semibold uppercase tracking-wider text-muted/80">
+        Source URL
+      </span>
+      <span className="min-w-0 flex-1">
+        {trimmed ? (
+          href ? (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block truncate text-xs text-primary hover:underline"
+              title={trimmed}
+            >
+              {trimmed}
+            </a>
+          ) : (
+            <span className="block truncate text-xs text-foreground/80" title={trimmed}>
+              {trimmed}
+            </span>
+          )
+        ) : (
+          <span className="text-xs italic text-muted/50">Not specified in report</span>
+        )}
+      </span>
     </div>
   );
 }
+
+// ── Diff panel (fallback — type-specific views used in card) ─────────────────
 
 // ── Main card ─────────────────────────────────────────────────────────────────
 
@@ -99,11 +118,11 @@ export function ChangeCard({
       className={cn(
         "surface-glow-target relative overflow-hidden rounded-2xl border transition-all duration-200",
         approvalStatus === "approved" &&
-          "border-success/20 bg-success-soft/20 shadow-[0_4px_16px_rgba(34,197,94,0.08)]",
+          "border-success/25 bg-success-soft shadow-[0_4px_16px_rgba(63,143,85,0.12)]",
         approvalStatus === "rejected" &&
-          "border-border/30 bg-background/40 opacity-55",
+          "border-border bg-surface/60 opacity-60",
         approvalStatus === "pending" &&
-          "border-border/40 bg-surface/50 shadow-[0_2px_12px_rgba(5,2,2,0.25)]",
+          "cs-change-card-pending border-border bg-surface",
       )}
     >
       {/* Priority rail */}
@@ -134,15 +153,20 @@ export function ChangeCard({
             >
               {change.priority}
             </Label>
-            <Label className="border-border/40 bg-surface/30 text-muted">
+            <Label className="border-border bg-surface-elevated text-muted">
               {change.change_type}
             </Label>
-            <Label className="border-border/40 bg-surface/30 text-muted">
+            <Label className="border-border bg-surface-elevated text-muted">
               {change.destination}
             </Label>
             {change.impact_score !== null && (
-              <Label className="border-border/40 bg-surface/30 text-muted">
-                {change.impact_score}/10
+              <Label className="border-border bg-surface-elevated text-muted">
+                {change.impact_score}/100
+              </Label>
+            )}
+            {change.needs_review && (
+              <Label className="border-warning/30 bg-warning-soft/30 text-warning">
+                Needs review
               </Label>
             )}
           </div>
@@ -155,7 +179,7 @@ export function ChangeCard({
               className={cn(
                 "h-7 w-7 transition-colors",
                 approvalStatus === "approved" &&
-                  "border-success/40 bg-success text-white hover:bg-success/90 shadow-none",
+                  "border-success/40 bg-success text-primary-foreground hover:bg-success/90 shadow-none",
               )}
               onClick={onApprove}
               aria-label="Approve"
@@ -186,14 +210,31 @@ export function ChangeCard({
           </div>
         </div>
 
-        {/* Field + page */}
+        {/* Field */}
         <div className="mt-2">
           <p className="text-sm font-semibold text-foreground">{change.field_label}</p>
-          <p className="text-[11px] text-muted/60 truncate">{change.page_url}</p>
+          {change.location && (
+            <p className="text-[11px] text-muted/70">{change.location}</p>
+          )}
         </div>
 
-        {/* Diff */}
-        <DiffView current={change.current_state} proposed={effectiveProposed} />
+        {/* Type-specific change preview */}
+        <ChangeTypeView
+          changeType={change.change_type}
+          current={change.current_state}
+          proposed={effectiveProposed}
+          fieldLabel={change.field_label}
+          pageUrl={change.page_url}
+          onApprove={onApprove}
+        />
+
+        <SourceUrl url={change.page_url} />
+
+        {change.needs_review && change.review_reason && (
+          <p className="mt-2 rounded-lg border border-warning/25 bg-warning-soft/15 px-3 py-2 text-xs text-warning">
+            {change.review_reason}
+          </p>
+        )}
 
         {/* Inline editor */}
         {editing && (

@@ -180,7 +180,8 @@ export function WorkspaceView({
     }
 
     for (const field of plugin?.input_fields || []) {
-      if (field.name in values) continue;
+      const existing = values[field.name];
+      if (existing !== undefined && existing !== null) continue;
       if (field.type === "checkbox") values[field.name] = false;
       else if (field.type === "number") values[field.name] = "";
       else values[field.name] = "";

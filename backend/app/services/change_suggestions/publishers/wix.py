@@ -1,8 +1,9 @@
-"""Wix REST/Headless API publisher."""
+"""Wix Site Pages API publisher — env settings or per-user credentials."""
 
 from __future__ import annotations
 
 import logging
+from typing import Optional
 
 import httpx
 
@@ -14,10 +15,10 @@ logger = logging.getLogger(__name__)
 _BASE = "https://www.wixapis.com/site-pages/v1"
 
 
-def _headers() -> dict[str, str]:
+def _headers(api_key: str, site_id: str) -> dict[str, str]:
     return {
-        "Authorization": settings.wix_api_key,
-        "wix-site-id": settings.wix_site_id,
+        "Authorization": api_key,
+        "wix-site-id": site_id,
         "Content-Type": "application/json",
     }
 
@@ -25,8 +26,13 @@ def _headers() -> dict[str, str]:
 async def publish(
     changes: list[ChangeResponse],
     dry_run: bool = True,
+    *,
+    api_key: Optional[str] = None,
+    site_id: Optional[str] = None,
 ) -> list[PublishItemResult]:
     results: list[PublishItemResult] = []
+    resolved_key = api_key or settings.wix_api_key
+    resolved_site_id = site_id or settings.wix_site_id
 
     if dry_run:
         for c in changes:
@@ -35,16 +41,40 @@ async def publish(
                 field_label=c.field_label,
                 page_url=c.page_url,
                 success=True,
+                error="Dry run: would update Wix page",
             ))
         logger.info("Wix dry-run: %d items would be published", len(changes))
         return results
 
-    async with httpx.AsyncClient(timeout=20, headers=_headers()) as client:
+    if not resolved_key or not resolved_site_id:
+        return [
+            PublishItemResult(
+                change_id=str(c.id),
+                field_label=c.field_label,
+                page_url=c.page_url,
+                success=False,
+                error="Wix not connected. Add your API key in Integrations.",
+            )
+            for c in changes
+        ]
+
+    async with httpx.AsyncClient(timeout=20, headers=_headers(resolved_key, resolved_site_id)) as client:
         for c in changes:
             try:
                 slug = c.page_url.rstrip("/").rsplit("/", 1)[-1] or "home"
 
                 pages_resp = await client.get(f"{_BASE}/pages", params={"paging.limit": 100})
+                if pages_resp.status_code == 401:
+                    return [
+                        PublishItemResult(
+                            change_id=str(ch.id),
+                            field_label=ch.field_label,
+                            page_url=ch.page_url,
+                            success=False,
+                            error="Wix authentication failed. Reconnect in Integrations.",
+                        )
+                        for ch in changes
+                    ]
                 pages_resp.raise_for_status()
                 pages = pages_resp.json().get("pages", [])
                 page = next(

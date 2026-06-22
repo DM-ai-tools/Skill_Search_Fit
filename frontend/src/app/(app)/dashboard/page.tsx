@@ -134,7 +134,7 @@ function ConnectUrlModal({
           style={{ animation: "lp-glow-breathe 6s ease-in-out infinite" }}
         />
         {/* Shimmer top edge */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-3xl bg-gradient-to-r from-transparent via-white/12 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-3xl edge-highlight" />
 
         {/* Close */}
         <button
@@ -314,7 +314,7 @@ function RunAuditModal({
         style={{ animation: "auth-slide-up 0.35s cubic-bezier(0.16,1,0.3,1) both" }}
       >
         <div className="pointer-events-none absolute -top-24 left-1/2 h-48 w-48 -translate-x-1/2 rounded-full bg-primary/18 blur-3xl" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-3xl bg-gradient-to-r from-transparent via-white/12 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-3xl edge-highlight" />
 
         <button
           onClick={handleClose}

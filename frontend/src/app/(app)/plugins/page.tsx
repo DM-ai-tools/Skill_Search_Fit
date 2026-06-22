@@ -45,7 +45,7 @@ function ProjectGlassCard({
   if (!siteUrl) {
     return (
       <div className="dash-glass relative flex items-center gap-4 overflow-hidden rounded-2xl p-4">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-2xl bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-2xl edge-highlight" />
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-dashed border-border-strong/60 bg-surface/40">
           <Globe className="h-4 w-4 text-muted/40" />
         </div>
@@ -62,7 +62,7 @@ function ProjectGlassCard({
   return (
     <div className="dash-glass relative flex flex-col gap-3 overflow-hidden rounded-2xl p-4 sm:flex-row sm:items-center">
       {/* Top shimmer */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-2xl bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-2xl edge-highlight" />
       {/* Ambient glow blob */}
       <div
         className="pointer-events-none absolute -top-10 right-10 h-32 w-32 rounded-full bg-primary/10 blur-3xl"

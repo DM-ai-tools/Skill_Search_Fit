@@ -1,13 +1,15 @@
 "use client";
-
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { HeaderIntegrationsButton } from "@/components/layout/header-integrations-button";
 import { HeaderProjectControls } from "@/components/layout/header-project-controls";
 import { SiteUrlControl } from "@/components/site-url-control";
 import { SiteAnalysisGenerationPanel } from "@/components/workspace/workspace-generation-panel";
 import { Button } from "@/components/ui/button";
 import { useAnalysisStore, SCAN_STATUS_LABELS, scanPhaseProgress } from "@/stores/analysis-store";
 import { useAuthStore } from "@/stores/auth-store";
+import { useIntegrationsStore } from "@/stores/integrations-store";
 import { cn } from "@/lib/utils";
 
 export function AppHeader({
@@ -26,6 +28,7 @@ export function AppHeader({
   const logout = useAuthStore((s) => s.logout);
   const phase = useAnalysisStore((s) => s.phase);
   const error = useAnalysisStore((s) => s.error);
+  const connectedCount = useIntegrationsStore((s) => s.connectedCount());
 
   const handleLogout = async () => {
     await logout();
@@ -65,14 +68,25 @@ export function AppHeader({
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {hideSiteUrl && busy && (
             <span className="hidden items-center gap-1.5 text-xs text-ai-accent sm:flex">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-ai-accent" />
               {SCAN_STATUS_LABELS[phase]}
             </span>
           )}
-          {!hideProjectControls && <HeaderProjectControls />}
+
+          {!hideProjectControls && (
+            <>
+              <HeaderIntegrationsButton
+                connectedCount={connectedCount}
+                onClick={() => router.push("/integrations")}
+              />
+              <HeaderProjectControls />
+            </>
+          )}
+
+          <ThemeToggle />
 
           <span className="hidden text-xs text-muted sm:block">{user?.name}</span>
 
@@ -99,6 +113,7 @@ export function AppHeader({
       {phase === "failed" && error && (
         <p className="text-xs text-destructive">{error}</p>
       )}
+
     </header>
   );
 }

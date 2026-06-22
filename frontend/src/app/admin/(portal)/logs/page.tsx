@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, Download } from "lucide-react";
 import { api } from "@/lib/api";
 import type { ActivityLog } from "@/lib/types";
@@ -135,9 +135,8 @@ export default function AdminLogsPage() {
             </thead>
             <tbody className="divide-y divide-border/30">
               {logs.map((log) => (
-                <>
+                <Fragment key={log.id}>
                   <tr
-                    key={log.id}
                     className="cursor-pointer transition-colors hover:bg-surface/40"
                     onClick={() => toggleExpand(log.id)}
                   >
@@ -155,7 +154,7 @@ export default function AdminLogsPage() {
                     <td className="px-4 py-3 text-xs text-muted">{log.ip_address ?? "—"}</td>
                   </tr>
                   {expanded.has(log.id) && (
-                    <tr key={`${log.id}-meta`} className="bg-surface/60">
+                    <tr className="bg-surface/60">
                       <td colSpan={5} className="px-6 py-3">
                         <pre className={cn(
                           "overflow-auto rounded-xl border border-border/30 bg-background/60 p-3 text-xs text-foreground/80",
@@ -166,7 +165,7 @@ export default function AdminLogsPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>

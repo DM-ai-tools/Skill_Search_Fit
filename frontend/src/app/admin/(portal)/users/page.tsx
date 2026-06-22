@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import type { AdminUserRow } from "@/lib/types";
@@ -147,9 +147,8 @@ export default function AdminUsersPage() {
               <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted">No users found.</td></tr>
             )}
             {filtered.map((u) => (
-              <>
+              <Fragment key={u.id}>
                 <tr
-                  key={u.id}
                   className={cn(
                     "transition-colors hover:bg-surface/40",
                     editingId === u.id && "bg-surface/60",
@@ -194,7 +193,7 @@ export default function AdminUsersPage() {
 
                 {/* Inline edit row */}
                 {editingId === u.id && (
-                  <tr key={`${u.id}-edit`} className="bg-surface/80">
+                  <tr className="bg-surface/80">
                     <td colSpan={6} className="px-4 py-3">
                       <div className="flex flex-wrap items-end gap-2">
                         <Input
@@ -233,7 +232,7 @@ export default function AdminUsersPage() {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>

@@ -248,7 +248,7 @@ def build_step_inputs(
             "brand_name": brand,
             "category": base.get("market_category", seed or "SEO software"),
             "website_url": site_url,
-            "competitors": competitors,
+            "competitors": competitor_context or competitors,
             "value_proposition": base.get("value_proposition", f"Leading solution from {brand}"),
             "target_prompts": base.get("target_prompts", ""),
             "ai_platforms": "all",

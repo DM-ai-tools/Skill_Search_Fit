@@ -107,15 +107,17 @@ export function downloadReportPdf(pluginName: string, markdown: string) {
 </body>
 </html>`;
 
-  const printWindow = window.open("", "_blank", "noopener,noreferrer");
+  const printWindow = window.open("", "_blank");
   if (!printWindow) return;
 
-  printWindow.document.open();
-  printWindow.document.write(html);
-  printWindow.document.close();
-
+  // onload must be assigned before document.write/close so it is not missed
+  // when the browser fires load synchronously for resource-free HTML.
   printWindow.onload = () => {
     printWindow.focus();
     printWindow.print();
   };
+
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
 }

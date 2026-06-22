@@ -57,7 +57,7 @@ export function SuggestionSelect({
       </button>
 
       {open && (
-        <div className="absolute z-30 mt-1.5 w-full overflow-hidden rounded-xl border border-border-strong bg-surface-elevated shadow-[0_16px_40px_rgba(0,0,0,0.45)]">
+        <div className="absolute z-30 mt-1.5 w-full overflow-hidden rounded-xl border border-border-strong bg-surface-elevated dropdown-shadow">
           <ul className="max-h-56 overflow-auto py-1">
             {(field.options ?? []).map((opt) => (
               <li key={opt.value}>

@@ -5,6 +5,10 @@ function resolveApiUrl(): string {
   if (typeof window !== "undefined") {
     return "/api/v1";
   }
+  const proxyTarget = process.env.API_PROXY_TARGET?.trim();
+  if (proxyTarget) {
+    return `${proxyTarget.replace(/\/+$/, "")}/api/v1`;
+  }
   return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 }
 

@@ -40,6 +40,111 @@ JSON_LD_RE = re.compile(
 LINK_RE = re.compile(r'<a[^>]+href=["\']([^"\']+)["\']', re.IGNORECASE)
 
 
+def site_base_parts(url: str) -> tuple[str, str]:
+    """Return (origin, path_prefix) e.g. https://trdemo.com.au, /testdomain1."""
+    parsed = urlparse(url.strip().rstrip("/") or url.strip())
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    prefix = parsed.path.rstrip("/")
+    return origin, prefix
+
+
+def site_base_url(url: str) -> str:
+    origin, prefix = site_base_parts(url)
+    return f"{origin}{prefix}" if prefix else origin
+
+
+def _same_site_scope(link: str, origin: str, path_prefix: str) -> bool:
+    parsed = urlparse(link)
+    link_origin = f"{parsed.scheme}://{parsed.netloc}"
+    if link_origin.replace("www.", "") != origin.replace("www.", ""):
+        return False
+    if not path_prefix:
+        return True
+    path = parsed.path or "/"
+    return path == path_prefix or path.startswith(f"{path_prefix}/")
+
+
+def _build_seed_urls(base_url: str) -> list[str]:
+    origin, prefix = site_base_parts(base_url)
+    site_base = f"{origin}{prefix}" if prefix else origin
+    seeds: list[str] = []
+    for path in SEED_PATHS:
+        if path == "/":
+            seeds.append(f"{site_base}/")
+        else:
+            seeds.append(f"{site_base}{path}")
+    return list(dict.fromkeys(seeds))
+
+
+def page_snapshot_from_fetch(page: dict[str, Any]) -> dict[str, Any]:
+    """Normalize a fetched page into a compact snapshot for audits and validation."""
+    meta = page.get("meta") or {}
+    html = page.get("html") or ""
+    snippet = page.get("snippet")
+    if not snippet and html:
+        snippet = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html))[:3000]
+    return {
+        "url": page.get("url", ""),
+        "status": page.get("status", 0),
+        "meta": meta,
+        "title": meta.get("title", ""),
+        "meta_description": meta.get("description", meta.get("og:description", "")),
+        "h1": meta.get("h1", ""),
+        "snippet": snippet or "",
+        "json_ld": page.get("json_ld", []),
+    }
+
+
+async def fetch_page_content(url: str, timeout_seconds: float = 10.0) -> dict[str, Any]:
+    """Fetch a single URL and return a page snapshot (empty snapshot on failure)."""
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(timeout_seconds, connect=5.0),
+        headers={"User-Agent": "SkillSearchFit-Analyzer/1.0"},
+        follow_redirects=True,
+    ) as client:
+        raw = await _fetch_page(client, url)
+    snapshot = page_snapshot_from_fetch(raw)
+    snapshot["html"] = (raw.get("html") or "")[:120_000]
+    return snapshot
+
+
+async def fetch_pages_content(urls: list[str], *, limit: int = 12) -> dict[str, dict[str, Any]]:
+    """Fetch multiple URLs concurrently; returns map normalized_url → snapshot."""
+    unique: list[str] = []
+    seen: set[str] = set()
+    for url in urls:
+        trimmed = url.strip()
+        if not trimmed:
+            continue
+        norm = trimmed.rstrip("/")
+        if norm not in seen:
+            seen.add(norm)
+            unique.append(trimmed)
+        if len(unique) >= limit:
+            break
+
+    if not unique:
+        return {}
+
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(10.0, connect=5.0),
+        headers={"User-Agent": "SkillSearchFit-Analyzer/1.0"},
+        follow_redirects=True,
+    ) as client:
+        results = await asyncio.gather(*[_fetch_page(client, u) for u in unique], return_exceptions=True)
+
+    out: dict[str, dict[str, Any]] = {}
+    for url, result in zip(unique, results):
+        if isinstance(result, Exception):
+            logger.warning("Live fetch failed for %s: %s", url, result)
+            continue
+        snapshot = page_snapshot_from_fetch(result)
+        snapshot["html"] = (result.get("html") or "")[:120_000]
+        key = str(snapshot.get("url") or url).rstrip("/")
+        out[key] = snapshot
+    return out
+
+
 def _extract_meta(html: str) -> dict[str, str]:
     meta: dict[str, str] = {}
     for match in META_TAG_RE.finditer(html):
@@ -96,12 +201,9 @@ async def _fetch_page(client: httpx.AsyncClient, url: str) -> dict[str, Any]:
 
 
 async def _discover_from_sitemap(client: httpx.AsyncClient, base_url: str) -> list[str]:
-    parsed = urlparse(base_url)
-    origin = f"{parsed.scheme}://{parsed.netloc}"
-    candidates = (
-        f"{origin}/sitemap.xml",
-        f"{origin}/sitemap_index.xml",
-    )
+    origin, prefix = site_base_parts(base_url)
+    site_base = f"{origin}{prefix}" if prefix else origin
+    candidates = [f"{site_base}/sitemap.xml", f"{origin}/sitemap.xml", f"{origin}/sitemap_index.xml"]
     discovered: list[str] = []
     for sm in candidates:
         try:
@@ -112,7 +214,9 @@ async def _discover_from_sitemap(client: httpx.AsyncClient, base_url: str) -> li
             urls = re.findall(r"<loc>\s*(.*?)\s*</loc>", xml, flags=re.IGNORECASE)
             for u in urls:
                 p = urlparse(u.strip())
-                if p.netloc.replace("www.", "") == parsed.netloc.replace("www.", ""):
+                if p.netloc.replace("www.", "") == urlparse(origin).netloc.replace("www.", ""):
+                    if prefix and not _same_site_scope(u.strip(), origin, prefix):
+                        continue
                     discovered.append(u.strip().split("#")[0].rstrip("/"))
         except Exception:
             continue
@@ -121,11 +225,8 @@ async def _discover_from_sitemap(client: httpx.AsyncClient, base_url: str) -> li
 
 async def crawl_website(base_url: str, timeout_seconds: int = 30) -> dict[str, Any]:
     """Best-effort full crawl of discoverable internal pages within timeout budget."""
-    parsed = urlparse(base_url)
-    origin = f"{parsed.scheme}://{parsed.netloc}"
-    seed_targets = list(
-        dict.fromkeys(urljoin(origin, p) if p != "/" else origin.rstrip("/") + "/" for p in SEED_PATHS)
-    )
+    origin, prefix = site_base_parts(base_url)
+    seed_targets = _build_seed_urls(base_url)
     pages: list[dict[str, Any]] = []
     all_links: list[str] = []
     combined_meta: dict[str, str] = {}
@@ -180,6 +281,8 @@ async def crawl_website(base_url: str, timeout_seconds: int = 30) -> dict[str, A
                 links = page.get("internal_links", [])
                 all_links.extend(links)
                 for link in links:
+                    if prefix and not _same_site_scope(link, origin, prefix):
+                        continue
                     norm = link.rstrip("/")
                     if norm not in discovered_set and norm not in visited:
                         discovered_set.add(norm)

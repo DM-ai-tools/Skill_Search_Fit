@@ -27,7 +27,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
-const DESTINATIONS: ChangeDestination[] = ["WordPress", "Webflow", "Wix", "Mailchimp"];
+const DESTINATIONS: ChangeDestination[] = ["WordPress", "Webflow", "Wix"];
 
 type View = "review" | "publish";
 
@@ -196,7 +196,7 @@ export default function PlanPage() {
   const handleDownload = (dest: ChangeDestination) => {
     const state = getDs(dest);
     if (!state.payload) return;
-    const ext = dest === "Mailchimp" ? "json" : "html";
+    const ext = "html";
     const blob = new Blob([state.payload], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

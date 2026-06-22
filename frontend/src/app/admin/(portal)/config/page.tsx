@@ -19,7 +19,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   wordpress:   "WordPress",
   webflow:     "Webflow",
   wix:         "Wix",
-  mailchimp:   "Mailchimp",
 };
 
 interface EditingEntry {
@@ -189,16 +188,8 @@ export default function AdminConfigPage() {
       {/* Password confirmation modal */}
       {confirmOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setConfirmOpen(false)} />
-          <div
-            className="relative w-full max-w-sm space-y-4 rounded-2xl p-6"
-            style={{
-              background: "rgba(20,26,36,0.92)",
-              backdropFilter: "blur(24px) saturate(180%)",
-              border: "1px solid rgba(244,241,236,0.10)",
-              boxShadow: "0 32px 80px rgba(0,0,0,0.55)",
-            }}
-          >
+          <div className="modal-overlay" onClick={() => setConfirmOpen(false)} />
+          <div className="relative w-full max-w-sm space-y-4 rounded-2xl glass-panel-strong p-6">
             <h3 className="text-base font-semibold">Confirm admin password</h3>
             <p className="text-sm text-muted">
               Enter your password to save changes to <span className="font-mono text-foreground">{pendingEdit?.key.toUpperCase()}</span>.

@@ -46,7 +46,7 @@ export function Dialog({
         aria-modal="true"
         aria-labelledby={title ? "dialog-title" : undefined}
         className={cn(
-          "glass-panel-strong relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl shadow-[0_24px_64px_rgba(5,2,2,0.70)]",
+          "glass-panel-strong relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl shadow-[var(--glass-shadow-strong)]",
           className,
         )}
       >

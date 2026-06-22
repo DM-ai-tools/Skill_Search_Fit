@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { X, CheckCheck, XCircle, Sparkles, Send, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ChangeCard } from "@/components/change-suggestions/change-card";
 import { FilterBar, type Filters } from "@/components/change-suggestions/filter-bar";
 import { PublishConfirmModal } from "@/components/change-suggestions/publish-confirm-modal";
 import { useChangeSuggestionsStore } from "@/stores/change-suggestions-store";
+import { useIntegrationsStore } from "@/stores/integrations-store";
 import {
   changeSuggestionsApi,
   type ApprovalStatus,
@@ -15,21 +17,59 @@ import {
   type PayloadResponse,
   type PublishResponse,
 } from "@/lib/change-suggestions-api";
+import { integrationsApi } from "@/lib/integrations-api";
+import type { ElementorCheckResponse, PlatformPublishResponse } from "@/lib/integrations-api";
 
 type PanelTab = "review" | "publish";
 
-const DESTINATIONS: ChangeDestination[] = ["WordPress", "Webflow", "Wix", "Mailchimp"];
+const DESTINATIONS: ChangeDestination[] = ["WordPress", "Webflow", "Wix"];
 
 interface ChangeSuggestionsPanelProps {
   open: boolean;
   suggestionId: string | null;
   onClose: () => void;
+  preloading?: boolean;
+  preloadError?: string | null;
+  onRetryPreload?: () => void;
+}
+
+function ChangeCardSkeleton() {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-surface/50">
+      <div className="absolute left-0 top-0 bottom-0 w-[3px] animate-pulse bg-surface-elevated/70" />
+      <div className="space-y-3 pl-5 pr-4 pt-4 pb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex gap-1.5">
+            <Skeleton className="h-5 w-14" />
+            <Skeleton className="h-5 w-16" />
+            <Skeleton className="h-5 w-20" />
+          </div>
+          <div className="flex gap-1">
+            <Skeleton className="h-7 w-7 rounded-md" />
+            <Skeleton className="h-7 w-7 rounded-md" />
+            <Skeleton className="h-7 w-7 rounded-md" />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-3 w-64" />
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Skeleton className="h-20 rounded-xl" />
+          <Skeleton className="h-20 rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function ChangeSuggestionsPanel({
   open,
   suggestionId,
   onClose,
+  preloading = false,
+  preloadError = null,
+  onRetryPreload,
 }: ChangeSuggestionsPanelProps) {
   const {
     changes,
@@ -41,6 +81,10 @@ export function ChangeSuggestionsPanel({
     setPublishResults,
     mergedChanges,
   } = useChangeSuggestionsStore();
+  const publishWordPress = useIntegrationsStore((s) => s.publishWordPress);
+  const publishWebflow = useIntegrationsStore((s) => s.publishWebflow);
+  const publishWix = useIntegrationsStore((s) => s.publishWix);
+  const integrationFor = useIntegrationsStore((s) => s.integrationFor);
 
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -59,6 +103,9 @@ export function ChangeSuggestionsPanel({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [actionError, setActionError] = useState("");
   const [payloadExpanded, setPayloadExpanded] = useState(false);
+  const [elementorStatus, setElementorStatus] = useState<ElementorCheckResponse | null>(null);
+  const [checkingElementor, setCheckingElementor] = useState(false);
+  const [elementorChecked, setElementorChecked] = useState(false);
 
   useEffect(() => {
     if (!open || !suggestionId) return;
@@ -68,6 +115,8 @@ export function ChangeSuggestionsPanel({
     setPublishResult(null);
     setActionError("");
     setLoadError("");
+    setElementorStatus(null);
+    setElementorChecked(false);
 
     // Reuse pre-loaded state if this suggestion is already in the store
     const { suggestionId: stored, changes: current } = useChangeSuggestionsStore.getState();
@@ -82,6 +131,19 @@ export function ChangeSuggestionsPanel({
   // loadSuggestion is stable (Zustand); open/suggestionId are the real triggers
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, suggestionId]);
+
+  useEffect(() => {
+    if (tab !== "publish" || selectedDest !== "WordPress" || !suggestionId) return;
+    if (elementorChecked) return;
+    const wp = integrationFor("WordPress");
+    if (wp?.status !== "connected") return;
+    setCheckingElementor(true);
+    integrationsApi.elementorCheck(suggestionId)
+      .then((res) => { setElementorStatus(res); setElementorChecked(true); })
+      .catch(() => { setElementorChecked(true); })
+      .finally(() => setCheckingElementor(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, selectedDest, suggestionId, elementorChecked]);
 
   const allChanges = useMemo(() => mergedChanges(), [changes, overrides]);
 
@@ -159,15 +221,43 @@ export function ChangeSuggestionsPanel({
     }
   };
 
+  const _runPublish = async (dryRun: boolean) => {
+    if (!suggestionId) return;
+    const integration = integrationFor(selectedDest);
+    if (integration?.status === "connected") {
+      let res: PlatformPublishResponse;
+      if (selectedDest === "WordPress") {
+        res = await publishWordPress(suggestionId, dryRun);
+      } else if (selectedDest === "Webflow") {
+        res = await publishWebflow(suggestionId, dryRun);
+      } else {
+        res = await publishWix(suggestionId, dryRun);
+      }
+      const adapted: PublishResponse = {
+        destination: selectedDest,
+        dry_run: res.dry_run,
+        results: res.results,
+        audit_log_id: null,
+      };
+      if (typeof res.cache_cleared === "boolean") {
+        Object.assign(adapted, { cache_cleared: res.cache_cleared });
+      }
+      setPublishResult(adapted);
+      setPublishResults(adapted.results, dryRun);
+    } else {
+      const result = await changeSuggestionsApi.publish(suggestionId, selectedDest, dryRun);
+      setPublishResult(result);
+      setPublishResults(result.results, dryRun);
+    }
+  };
+
   const handleDryRun = async () => {
     if (!suggestionId) return;
     setPublishing(true);
     setActionError("");
     setPublishResult(null);
     try {
-      const result = await changeSuggestionsApi.publish(suggestionId, selectedDest, true);
-      setPublishResult(result);
-      setPublishResults(result.results, true);
+      await _runPublish(true);
     } catch {
       setActionError("Dry-run failed.");
     } finally {
@@ -181,9 +271,7 @@ export function ChangeSuggestionsPanel({
     setPublishing(true);
     setActionError("");
     try {
-      const result = await changeSuggestionsApi.publish(suggestionId, selectedDest, false);
-      setPublishResult(result);
-      setPublishResults(result.results, false);
+      await _runPublish(false);
     } catch {
       setActionError("Publish failed.");
     } finally {
@@ -197,26 +285,15 @@ export function ChangeSuggestionsPanel({
     <div className="cs-panel-overlay fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+        className="cs-panel-backdrop absolute inset-0"
         onClick={onClose}
         aria-hidden
       />
 
       {/* Glass panel */}
-      <div
-        className="cs-panel-enter relative flex w-full max-w-3xl max-h-[90vh] flex-col overflow-hidden"
-        style={{
-          background: "rgba(20, 26, 36, 0.82)",
-          backdropFilter: "blur(24px) saturate(180%) brightness(1.08)",
-          WebkitBackdropFilter: "blur(24px) saturate(180%) brightness(1.08)",
-          border: "1px solid rgba(244, 241, 236, 0.10)",
-          borderRadius: "1.25rem",
-          boxShadow:
-            "0 32px 80px rgba(0,0,0,0.55), 0 4px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(244,241,236,0.06)",
-        }}
-      >
+      <div className="cs-panel-shell cs-panel-enter relative flex w-full max-w-4xl max-h-[90vh] flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-6 pb-4 pt-5">
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-6 pb-4 pt-5">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15">
               <Sparkles className="h-4 w-4 text-primary" />
@@ -234,7 +311,7 @@ export function ChangeSuggestionsPanel({
           </div>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/[0.06] hover:text-foreground"
+            className="cs-panel-muted-hover flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:text-foreground"
             aria-label="Close panel"
           >
             <X className="h-4 w-4" />
@@ -251,7 +328,7 @@ export function ChangeSuggestionsPanel({
                 "rounded-lg px-3 py-1.5 text-sm font-medium capitalize transition-colors",
                 tab === t
                   ? "bg-primary/15 text-primary"
-                  : "text-muted hover:bg-white/[0.04] hover:text-foreground",
+                  : "cs-panel-muted-hover text-muted hover:text-foreground",
               )}
             >
               {t}
@@ -260,7 +337,7 @@ export function ChangeSuggestionsPanel({
         </div>
 
         {/* Body — scrollable */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-5 py-4 sm:px-6">
           {loading && (
             <div className="flex items-center justify-center py-16">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
@@ -274,7 +351,18 @@ export function ChangeSuggestionsPanel({
             </div>
           )}
 
-          {!loading && !loadError && tab === "review" && (
+          {!loadError && preloadError && (
+            <div className="rounded-xl border border-destructive/25 bg-destructive-soft/30 px-4 py-3 text-sm text-destructive">
+              <p>{preloadError}</p>
+              {onRetryPreload && (
+                <Button size="sm" variant="outline" className="mt-3" onClick={onRetryPreload}>
+                  Retry
+                </Button>
+              )}
+            </div>
+          )}
+
+          {!loading && !loadError && !preloadError && tab === "review" && (
             <>
               {allChanges.length > 0 && (
                 <div className="mb-4">
@@ -282,7 +370,16 @@ export function ChangeSuggestionsPanel({
                 </div>
               )}
 
-              {allChanges.length === 0 && (
+              {allChanges.length === 0 && preloading && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-center gap-2 py-2 text-sm text-muted">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+                    Preparing your change suggestions…
+                  </div>
+                  {[0, 1, 2].map((i) => <ChangeCardSkeleton key={i} />)}
+                </div>
+              )}
+              {allChanges.length === 0 && !preloading && (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <p className="text-sm text-muted">No changes extracted from this report.</p>
                 </div>
@@ -325,6 +422,8 @@ export function ChangeSuggestionsPanel({
                         setSelectedDest(dest);
                         setPayload(null);
                         setPublishResult(null);
+                        setElementorStatus(null);
+                        setElementorChecked(false);
                       }}
                       className={cn(
                         "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
@@ -338,6 +437,80 @@ export function ChangeSuggestionsPanel({
                   ))}
                 </div>
               </div>
+
+              {/* CMS integration status banner */}
+              {(() => {
+                const cms = integrationFor(selectedDest);
+                if (!cms || cms.status === "disconnected") {
+                  return (
+                    <div className="flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/[0.06] px-4 py-3 text-sm text-muted">
+                      <span className="mt-0.5 text-primary">⚡</span>
+                      <span>
+                        Connect {selectedDest} in{" "}
+                        <span className="font-medium text-foreground">Integrations</span> to publish
+                        directly to your site.
+                      </span>
+                    </div>
+                  );
+                }
+                if (cms.status === "reauth") {
+                  return (
+                    <div className="flex items-start gap-2.5 rounded-xl border border-warning/25 bg-warning-soft/15 px-4 py-3 text-sm text-warning">
+                      <span className="mt-0.5">⚠</span>
+                      <span>
+                        {selectedDest} authentication expired. Reconnect your site in Integrations before
+                        publishing.
+                      </span>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="flex items-center gap-2 rounded-xl border border-success/20 bg-success-soft/10 px-4 py-2.5 text-sm">
+                    <span className="text-success">✓</span>
+                    <span className="text-foreground/80">
+                      Publishing to{" "}
+                      <span className="font-medium text-foreground">{cms.site_url}</span> via your
+                      connected integration.
+                    </span>
+                  </div>
+                );
+              })()}
+
+              {/* Elementor status */}
+              {selectedDest === "WordPress" && integrationFor("WordPress")?.status === "connected" && (
+                <>
+                  {checkingElementor && (
+                    <p className="text-xs text-muted/60">Checking Elementor…</p>
+                  )}
+                  {elementorStatus?.setup_required && (
+                    <div className="rounded-xl border border-warning/30 bg-warning-soft/10 px-4 py-3">
+                      <p className="text-sm font-medium text-warning">Elementor REST API access required</p>
+                      <p className="mt-1 text-xs text-muted">
+                        Add this file to your WordPress site to enable direct publishing:
+                      </p>
+                      <p className="mt-1 font-mono text-xs text-muted/80">
+                        /wp-content/mu-plugins/elementor-rest-meta.php
+                      </p>
+                      <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-black/30 p-3 text-[11px] leading-relaxed text-muted/80">
+                        {elementorStatus.setup_instructions}
+                      </pre>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-2"
+                        onClick={() => { setElementorChecked(false); setElementorStatus(null); }}
+                      >
+                        Re-check Connection
+                      </Button>
+                    </div>
+                  )}
+                  {elementorStatus && !elementorStatus.setup_required && elementorStatus.is_elementor_page && (
+                    <p className="text-xs text-success/80">
+                      ✓ Elementor detected · {elementorStatus.widget_count ?? "?"} widgets indexed
+                    </p>
+                  )}
+                </>
+              )}
 
               {/* Approval summary */}
               <div
@@ -408,7 +581,7 @@ export function ChangeSuggestionsPanel({
               {payload && (
                 <div className="overflow-hidden rounded-xl border border-border/40 bg-surface/30">
                   <button
-                    className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-white/[0.03]"
+                    className="cs-panel-muted-hover flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-foreground transition-colors"
                     onClick={() => setPayloadExpanded((v) => !v)}
                   >
                     <span>Payload preview ({payload.change_ids.length} changes)</span>
@@ -433,38 +606,64 @@ export function ChangeSuggestionsPanel({
                   <p className="text-xs font-medium uppercase tracking-wider text-muted">
                     {publishResult.dry_run ? "Dry-run results" : "Publish results"}
                   </p>
+                  {typeof (publishResult as { cache_cleared?: boolean | null }).cache_cleared === "boolean" && (
+                    <p className={cn(
+                      "text-xs",
+                      (publishResult as { cache_cleared?: boolean | null }).cache_cleared
+                        ? "text-success/80"
+                        : "text-warning",
+                    )}>
+                      {(publishResult as { cache_cleared?: boolean | null }).cache_cleared
+                        ? "✓ Elementor cache cleared"
+                        : "⚠ Cache clear required — go to Elementor → Tools → Regenerate CSS"}
+                    </p>
+                  )}
                   <div className="space-y-1.5">
-                    {publishResult.results.map((r) => (
-                      <div
-                        key={r.change_id}
-                        className={cn(
-                          "flex items-start gap-3 rounded-lg border px-3 py-2.5 text-sm",
-                          r.success
-                            ? "border-success/20 bg-success-soft/15"
-                            : "border-destructive/20 bg-destructive-soft/15",
-                        )}
-                      >
-                        <span
+                    {publishResult.results.map((r) => {
+                      const pr = r as typeof r & { widget_type?: string | null };
+                      return (
+                        <div
+                          key={r.change_id}
                           className={cn(
-                            "mt-0.5 text-xs font-bold",
-                            r.success ? "text-success" : "text-destructive",
+                            "flex items-start gap-3 rounded-lg border px-3 py-2.5 text-sm",
+                            r.success
+                              ? "border-success/20 bg-success-soft/15"
+                              : "border-destructive/20 bg-destructive-soft/15",
                           )}
                         >
-                          {r.success ? "✓" : "✗"}
-                        </span>
-                        <div className="min-w-0">
-                          <p
-                            className={cn(r.success ? "text-foreground" : "text-destructive")}
+                          <span
+                            className={cn(
+                              "mt-0.5 text-xs font-bold",
+                              r.success ? "text-success" : "text-destructive",
+                            )}
                           >
-                            {r.field_label}
-                          </p>
-                          {r.error && (
-                            <p className="mt-0.5 text-xs text-destructive/70">{r.error}</p>
-                          )}
-                          <p className="truncate text-[11px] text-muted/60">{r.page_url}</p>
+                            {r.success ? "✓" : "✗"}
+                          </span>
+                          <div className="min-w-0">
+                            <p className={cn(r.success ? "text-foreground" : "text-destructive")}>
+                              {r.field_label}
+                            </p>
+                            {pr.widget_type && (
+                              <p className="mt-0.5 text-xs text-muted/60">
+                                Updated {pr.widget_type} widget
+                              </p>
+                            )}
+                            {r.error && (
+                              <p className="mt-0.5 text-xs text-destructive/70">{r.error}</p>
+                            )}
+                            {!r.success && r.error?.toLowerCase().includes("not found in elementor") && (
+                              <button
+                                className="mt-1 text-[11px] text-primary hover:underline"
+                                onClick={() => navigator.clipboard.writeText(r.error ?? "")}
+                              >
+                                Copy content to paste manually
+                              </button>
+                            )}
+                            <p className="truncate text-[11px] text-muted/60">{r.page_url}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -474,12 +673,12 @@ export function ChangeSuggestionsPanel({
 
         {/* Sticky footer — review tab only */}
         {!loading && !loadError && tab === "review" && allChanges.length > 0 && (
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-white/[0.06] px-6 py-4">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4 sm:px-6">
             <span className="text-xs text-muted">
               <span className="font-semibold text-success">{approvedCount}</span> /{" "}
               {allChanges.length} approved
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <Button
                 size="sm"
                 variant="ghost"

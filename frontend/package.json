@@ -9,7 +9,7 @@
     "dev:kill": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/kill-dev-ports.ps1",
     "dev": "next dev --port 3000",
     "build": "next build",
-    "start": "next start -p ${PORT:-3000}",
+    "start": "next start -H 0.0.0.0",
     "lint": "eslint"
   },
   "dependencies": {

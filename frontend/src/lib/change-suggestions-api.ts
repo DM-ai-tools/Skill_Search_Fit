@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 
 export type ChangeType = "metadata" | "schema" | "content" | "technical" | "capture-form";
 export type ChangePriority = "High" | "Medium" | "Low";
-export type ChangeDestination = "WordPress" | "Webflow" | "Wix" | "Mailchimp";
+export type ChangeDestination = "WordPress" | "Webflow" | "Wix";
 export type ApprovalStatus = "pending" | "approved" | "rejected";
 export type SuggestionStatus = "uploaded" | "extracting" | "ready" | "failed";
 
@@ -20,6 +20,7 @@ export interface ChangeSuggestionResponse {
 export interface ChangeResponse {
   id: string;
   suggestion_id: string;
+  location: string | null;
   page_url: string;
   change_type: ChangeType;
   priority: ChangePriority;
@@ -30,6 +31,8 @@ export interface ChangeResponse {
   proposed_content: string;
   edited_content: string | null;
   source_excerpt: string | null;
+  needs_review: boolean;
+  review_reason: string | null;
   approval_status: ApprovalStatus;
   created_at: string;
   updated_at: string;
@@ -64,8 +67,14 @@ export interface PayloadResponse {
 // ── API calls ─────────────────────────────────────────────────────────────────
 
 export const changeSuggestionsApi = {
-  upload: (rawContent: string, filename: string) =>
-    api.post<ChangeSuggestionResponse>("/change-suggestions", { raw_content: rawContent, filename }),
+  upload: (rawContent: string, filename: string, baseUrl?: string, pluginName?: string, pluginSlug?: string) =>
+    api.post<ChangeSuggestionResponse>("/change-suggestions", {
+      raw_content: rawContent,
+      filename,
+      base_url: baseUrl || undefined,
+      plugin_name: pluginName || undefined,
+      plugin_slug: pluginSlug || undefined,
+    }),
 
   list: () => api.get<ChangeSuggestionResponse[]>("/change-suggestions"),
 

@@ -9,7 +9,7 @@ import { FilterBar, type Filters } from "@/components/change-suggestions/filter-
 import { Button } from "@/components/ui/button";
 import { formatApiError } from "@/lib/format-api-error";
 
-const DESTINATIONS: ChangeDestination[] = ["WordPress", "Webflow", "Wix", "Mailchimp"];
+const DESTINATIONS: ChangeDestination[] = ["WordPress", "Webflow", "Wix"];
 
 export function ReviewStep() {
   const { suggestionId, mergedChanges, setOverride, bulkApprove, bulkReject, setStep } =
@@ -110,7 +110,7 @@ export function ReviewStep() {
   return (
     <div className="space-y-6">
       {/* sticky summary bar */}
-      <div className="sticky top-0 z-20 rounded-xl border border-border/40 bg-surface/80 p-3 shadow-[0_2px_16px_rgba(5,2,2,0.30)] backdrop-blur-xl">
+      <div className="sticky-bar-shadow sticky top-0 z-20 rounded-xl border border-border/40 bg-surface/80 p-3 backdrop-blur-xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4 text-sm">
             <span className="font-semibold text-foreground">{changes.length} changes</span>

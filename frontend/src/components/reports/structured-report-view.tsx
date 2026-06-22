@@ -25,7 +25,7 @@ function renderTable(rows: string[][]) {
   if (rows.length === 0) return null;
   const [header, ...body] = rows;
   return (
-    <div className="report-table-wrap surface-nested overflow-x-auto rounded-xl border border-border-strong bg-surface shadow-[inset_0_1px_0_rgba(244,241,236,0.06)]">
+    <div className="report-table-wrap surface-nested surface-inset-edge overflow-x-auto rounded-xl border border-border-strong bg-surface">
       <table className="w-full min-w-[480px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-primary/25 bg-primary/12">

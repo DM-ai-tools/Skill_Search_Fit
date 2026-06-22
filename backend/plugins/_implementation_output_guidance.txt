@@ -1,0 +1,24 @@
+
+## Implementation Changes Section (required in every report)
+
+After your analysis, include a section titled **## Implementation Changes**.
+
+For each recommended fix in that section, use this exact structure so changes
+can be extracted for the Change Suggestions panel:
+
+### [Location] — [Field Label]
+- **Page URL:** https://full-url-of-page
+- **Change Type:** metadata | schema | content | technical | capture-form
+- **Priority:** High | Medium | Low
+- **Impact Score:** 1-100
+- **Current State:** (verbatim text currently on the page, or "(none — this element does not currently exist)")
+- **Proposed Change:** (ONLY the final publish-ready content — exact copy, JSON-LD, or HTML to deploy)
+- **Destination:** WordPress | Webflow | Wix
+
+Rules for Implementation Changes:
+1. Be specific to THIS website and business — never generic advice.
+2. Proposed Change must be ready to publish as-is (no instructions like "Add a meta description…").
+3. Current State must quote real page content from your analysis.
+4. Include 3-10 focused changes. Maximum 3 High priority items.
+5. Each page element appears once. No overlapping or contradictory changes.
+6. Never leave Page URL empty — use the site's base domain + logical slug.

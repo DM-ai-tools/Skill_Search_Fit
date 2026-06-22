@@ -14,6 +14,7 @@ from app.middleware.session import require_user
 from app.schemas.change_suggestions import (
     ChangePatchRequest,
     ChangeResponse,
+    ChangeSchema,
     ChangeSuggestionCreateRequest,
     ChangeSuggestionResponse,
     ChangeSuggestionWithChanges,
@@ -23,7 +24,15 @@ from app.schemas.change_suggestions import (
     PublishResponse,
 )
 from app.services.change_suggestions.extractor import extract_changes
-from app.services.change_suggestions.generators import generate_html_payload, generate_mailchimp_payload
+from app.services.change_suggestions.live_page_content import fetch_snapshots_for_changes
+from app.services.change_suggestions.generators import generate_html_payload
+from app.services.change_suggestions.plugin_specs import resolve_plugin_slug
+from app.services.change_suggestions.publish_ready import refine_publish_ready
+from app.services.change_suggestions.report_parser import parse_implementation_changes
+from app.services.change_suggestions.validator import (
+    infer_base_url,
+    validate_and_correct_changes,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +51,7 @@ def _row_to_change(row: dict) -> ChangeResponse:
 
 async def _get_suggestion_for_user(conn, suggestion_id: UUID, user_id: UUID) -> dict:
     row = await conn.fetchrow(
-        "SELECT id, user_id, filename, status, raw_content, extract_error, created_at, updated_at "
+        "SELECT id, user_id, filename, status, raw_content, extract_error, base_url, plugin_slug, created_at, updated_at "
         "FROM change_suggestions WHERE id = $1 AND user_id = $2",
         suggestion_id,
         user_id,
@@ -67,8 +76,6 @@ async def _dispatch_publish(destination: str, changes: list[ChangeResponse], dry
         from app.services.change_suggestions.publishers.webflow import publish
     elif destination == "Wix":
         from app.services.change_suggestions.publishers.wix import publish
-    elif destination == "Mailchimp":
-        from app.services.change_suggestions.publishers.mailchimp import publish
     else:
         raise AppError("INVALID_DESTINATION", f"Unknown destination: {destination}", 400)
     return await publish(changes, dry_run=dry_run)
@@ -80,16 +87,20 @@ async def _dispatch_publish(destination: str, changes: list[ChangeResponse], dry
 async def create_change_suggestion(body: ChangeSuggestionCreateRequest, request: Request):
     user = require_user(request)
     pool = get_pool()
+    plugin_slug = resolve_plugin_slug(body.plugin_slug, body.plugin_name)
+    base_url = infer_base_url(body.base_url, body.raw_content)
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            INSERT INTO change_suggestions (user_id, filename, raw_content, status)
-            VALUES ($1, $2, $3, 'uploaded')
+            INSERT INTO change_suggestions (user_id, filename, raw_content, status, base_url, plugin_slug)
+            VALUES ($1, $2, $3, 'uploaded', $4, $5)
             RETURNING id, user_id, filename, status, extract_error, created_at, updated_at
             """,
             user.id,
             body.filename,
             body.raw_content,
+            base_url,
+            plugin_slug,
         )
     return _row_to_suggestion(dict(row))
 
@@ -137,8 +148,37 @@ async def extract_change_suggestion(suggestion_id: UUID, request: Request):
             suggestion_id,
         )
 
+    plugin_slug = suggestion_row.get("plugin_slug")
+    audit_context = {
+        "base_url": suggestion_row.get("base_url"),
+        "raw_content": raw_content,
+        "plugin_slug": plugin_slug,
+    }
+
     try:
-        changes = await extract_changes(raw_content)
+        parsed = parse_implementation_changes(raw_content)
+        if parsed:
+            logger.info("Using %d structured Implementation Changes from report", len(parsed))
+            change_dicts = parsed
+        else:
+            extracted = await extract_changes(raw_content, plugin_slug=plugin_slug)
+            change_dicts = [c.model_dump() for c in extracted]
+
+        page_snapshots = await fetch_snapshots_for_changes(
+            change_dicts,
+            base_url=audit_context.get("base_url"),
+        )
+        audit_context["page_snapshots"] = page_snapshots
+        if page_snapshots:
+            logger.info("Fetched live page snapshots for %d URLs", len(page_snapshots))
+
+        validated, validation_summary = validate_and_correct_changes(change_dicts, audit_context)
+        logger.info("Change validation summary: %s", validation_summary)
+
+        refined = await refine_publish_ready(validated, raw_content)
+        validated, _ = validate_and_correct_changes(refined, audit_context)
+
+        changes = [ChangeSchema.model_validate(item) for item in validated]
     except ValueError as exc:
         async with pool.acquire() as conn:
             await conn.execute(
@@ -157,11 +197,13 @@ async def extract_change_suggestion(suggestion_id: UUID, request: Request):
             await conn.execute(
                 """
                 INSERT INTO suggestion_changes
-                  (suggestion_id, page_url, change_type, priority, impact_score,
-                   destination, field_label, current_state, proposed_content, source_excerpt)
-                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                  (suggestion_id, location, page_url, change_type, priority, impact_score,
+                   destination, field_label, current_state, proposed_content, source_excerpt,
+                   needs_review, review_reason)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
                 """,
                 suggestion_id,
+                c.location or None,
                 c.pageUrl,
                 c.changeType,
                 c.priority,
@@ -171,6 +213,8 @@ async def extract_change_suggestion(suggestion_id: UUID, request: Request):
                 c.currentState,
                 c.proposedContent,
                 c.sourceExcerpt,
+                c.needsReview,
+                c.reviewReason,
             )
 
         await conn.execute(
@@ -253,11 +297,7 @@ async def generate_suggestion_payload(suggestion_id: UUID, body: PayloadRequest,
             422,
         )
 
-    if body.destination == "Mailchimp":
-        payload_data = generate_mailchimp_payload(approved)
-        content = json.dumps(payload_data, indent=2)
-    else:
-        content = generate_html_payload(approved)
+    content = generate_html_payload(approved)
 
     return PayloadResponse(
         destination=body.destination,

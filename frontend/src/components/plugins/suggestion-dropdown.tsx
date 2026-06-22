@@ -70,7 +70,7 @@ export function SuggestionDropdown({
       </div>
 
       {open && hasSuggestions && (
-        <div className="absolute z-30 mt-1.5 w-full overflow-hidden rounded-xl border border-border-strong bg-surface-elevated shadow-[0_16px_40px_rgba(0,0,0,0.45)]">
+        <div className="absolute z-30 mt-1.5 w-full overflow-hidden rounded-xl border border-border-strong bg-surface-elevated dropdown-shadow">
           <div className="border-b border-border/40 px-3 py-2">
             <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted">
               AI suggestions
@@ -163,7 +163,7 @@ export function SuggestionTextarea({
             {suggestions.length} AI suggestions
           </button>
           {open && (
-            <div className="absolute z-30 mt-1.5 w-full overflow-hidden rounded-xl border border-border-strong bg-surface-elevated shadow-[0_16px_40px_rgba(0,0,0,0.45)]">
+            <div className="absolute z-30 mt-1.5 w-full overflow-hidden rounded-xl border border-border-strong bg-surface-elevated dropdown-shadow">
               <ul className="max-h-48 overflow-auto py-1">
                 {suggestions.map((suggestion) => (
                   <li key={suggestion}>

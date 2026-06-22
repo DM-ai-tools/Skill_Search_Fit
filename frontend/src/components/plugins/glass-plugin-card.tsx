@@ -82,7 +82,7 @@ export function GlassPluginCard({
         className="plugin-glass-card group relative flex h-full flex-col overflow-hidden rounded-2xl"
         style={{ "--glow-rgb": glow } as CSSProperties}
       >
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px edge-highlight" />
         <div
           className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-100"
           style={{ background: `rgba(${glow}, 0.22)` }}

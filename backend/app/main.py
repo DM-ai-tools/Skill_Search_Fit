@@ -12,7 +12,7 @@ from app.db.pool import close_pool, get_pool, init_pool
 from app.exceptions import AppError
 from app.middleware.rate_limit import rate_limit_middleware
 from app.middleware.session import SessionMiddleware
-from app.routers import admin, auth, change_suggestions, execute, pipelines, plugins, projects, users, website_analysis
+from app.routers import admin, auth, change_suggestions, execute, integrations, pipelines, plugins, projects, users, website_analysis
 from app.services.website_analysis.cache import purge_expired_analyses
 
 logging.basicConfig(level=logging.DEBUG if not settings.is_production else logging.INFO)
@@ -128,4 +128,5 @@ app.include_router(pipelines.router, prefix="/api/v1")
 app.include_router(execute.router, prefix="/api/v1")
 app.include_router(website_analysis.router, prefix="/api/v1")
 app.include_router(change_suggestions.router, prefix="/api/v1")
+app.include_router(integrations.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")

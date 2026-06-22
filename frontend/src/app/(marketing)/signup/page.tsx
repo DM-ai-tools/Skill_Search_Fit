@@ -89,7 +89,7 @@ export default function SignupPage() {
           </div>
 
           {/* Form card */}
-          <div className="rounded-2xl border border-border/60 bg-surface p-6 shadow-[0_8px_40px_rgba(0,0,0,0.25)]">
+          <div className="marketing-auth-card rounded-2xl border border-border/60 bg-surface p-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Full name */}
               <div>

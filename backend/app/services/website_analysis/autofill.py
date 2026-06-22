@@ -350,10 +350,25 @@ def _crawl_pages(website_analysis: dict[str, Any] | None) -> list[dict[str, Any]
 
 
 def _crawl_page_urls(website_analysis: dict[str, Any] | None, site_url: str, limit: int = 12) -> list[str]:
+    site_prefix = site_url.rstrip("/")
+    parsed = urlparse(site_prefix)
+    path_prefix = parsed.path.rstrip("/")
     urls = [str(p.get("url", "")).strip() for p in _crawl_pages(website_analysis) if p.get("url")]
-    urls = [u for u in urls if u]
+    scoped = []
+    for u in urls:
+        if not u:
+            continue
+        if path_prefix:
+            p = urlparse(u)
+            if p.path == path_prefix or p.path.startswith(f"{path_prefix}/"):
+                scoped.append(u)
+        else:
+            scoped.append(u)
+    urls = scoped or urls
     if not urls:
         return [site_url]
+    if site_prefix not in [u.rstrip("/") for u in urls]:
+        urls = [site_url, *urls]
     return urls[:limit]
 
 
@@ -547,6 +562,28 @@ def _default_field_value(
 
     if name == "target_keywords":
         return ", ".join(keywords[:8]) if keywords else primary_keyword
+
+    if name in {"secondary_keywords", "secondary_keyword"}:
+        return ", ".join(keywords[1:6]) if len(keywords) > 1 else ", ".join(keywords[:5])
+
+    if name in {"internal_link_targets", "internal_links", "priority_pages"}:
+        pages = _crawl_page_urls(website_analysis, site_url, 5)
+        return "\n".join(pages) if pages else site_url
+
+    if name in {"cta_goal", "call_to_action", "cta"}:
+        company = str(profile.get("company_name", "")).strip()
+        return f"Learn more about {company}" if company else ""
+
+    if name in {"unique_angle", "content_angle"}:
+        vp = str(profile.get("value_proposition") or "").strip()
+        return vp[:200] if vp else ""
+
+    if name in {"content_brief", "brief"}:
+        desc = str(profile.get("description") or "").strip()
+        return desc[:400] if desc else ""
+
+    if name in {"exclude_topics", "exclude_keywords"}:
+        return ""
 
     return ""
 
@@ -750,8 +787,6 @@ async def _backfill_empty_required_fields(
 ) -> dict[str, dict[str, Any]]:
     updated = dict(recommended)
     for field in input_fields:
-        if not field.get("required"):
-            continue
         name = str(field.get("name", ""))
         if not name:
             continue

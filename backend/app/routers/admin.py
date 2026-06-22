@@ -685,10 +685,6 @@ _CONFIG_META: dict[str, tuple[str, str]] = {
     "webflow_site_id":                      ("webflow",     "Webflow site ID"),
     "wix_api_key":                          ("wix",         "Wix API key"),
     "wix_site_id":                          ("wix",         "Wix site ID"),
-    "mailchimp_api_key":                    ("mailchimp",   "Mailchimp API key"),
-    "mailchimp_server_prefix":              ("mailchimp",   "Mailchimp server prefix (e.g. us1)"),
-    "mailchimp_from_name":                  ("mailchimp",   "Mailchimp campaign from-name"),
-    "mailchimp_from_email":                 ("mailchimp",   "Mailchimp campaign reply-to email"),
 }
 
 

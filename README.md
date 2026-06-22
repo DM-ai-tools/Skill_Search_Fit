@@ -71,6 +71,24 @@ Base URL: `http://localhost:8000/api/v1`
 - CSRF cookie: `ssf_csrf` (readable; sent as `X-CSRF-Token` header on mutating requests)
 - OpenAPI docs: http://localhost:8000/docs
 
+## Railway deployment
+
+Deploy as **two services** from this monorepo (Postgres plugin or external database required for the API).
+
+| Service | Root directory | Builder |
+|---------|----------------|---------|
+| API | `backend` | `Dockerfile` (see `backend/railway.toml`) |
+| Web | `frontend` | `Dockerfile` (see `frontend/railway.toml`) |
+
+1. Create a Postgres database and attach `DATABASE_URL` to the API service.
+2. Copy variables from [`railway.env.example`](./railway.env.example) into each service.
+3. Set `CORS_ORIGINS` on the API to your web service public URL.
+4. Set `API_PROXY_TARGET` on the web service to your API public URL (no trailing slash).
+5. Set `NEXT_PUBLIC_API_URL` on the web service **before build** to `https://<web>/api/v1`.
+6. Deploy API first; the container runs migrations, seeds admin/plugins, then binds `0.0.0.0:$PORT`.
+
+Health checks: API `/health`, web `/`.
+
 ## Documentation
 
 See [docs/README.md](./docs/README.md) for PRD, TRD, app flow, UI brief, and backend schema.

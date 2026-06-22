@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 export function MarketingNav() {
   return (
@@ -23,6 +24,7 @@ export function MarketingNav() {
 
         {/* CTAs */}
         <div className="flex items-center gap-2">
+          <ThemeToggle className="hidden sm:inline-flex" />
           <Link href="/login">
             <Button variant="ghost" size="sm" className="text-muted hover:text-foreground">
               Log in

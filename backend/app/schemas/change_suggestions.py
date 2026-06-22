@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 ChangeType = Literal["metadata", "schema", "content", "technical", "capture-form"]
 ChangePriority = Literal["High", "Medium", "Low"]
-ChangeDestination = Literal["WordPress", "Webflow", "Wix", "Mailchimp"]
+ChangeDestination = Literal["WordPress", "Webflow", "Wix"]
 ApprovalStatus = Literal["pending", "approved", "rejected"]
 SuggestionStatus = Literal["uploaded", "extracting", "ready", "failed"]
 
@@ -19,6 +19,9 @@ SuggestionStatus = Literal["uploaded", "extracting", "ready", "failed"]
 class ChangeSuggestionCreateRequest(BaseModel):
     raw_content: str = Field(..., min_length=10)
     filename: str = Field(default="pasted-report", max_length=500)
+    base_url: Optional[str] = Field(default=None, max_length=2000)
+    plugin_slug: Optional[str] = Field(default=None, max_length=100)
+    plugin_name: Optional[str] = Field(default=None, max_length=200)
 
 
 class ChangeSuggestionResponse(BaseModel):
@@ -35,15 +38,18 @@ class ChangeSuggestionResponse(BaseModel):
 class ChangeSchema(BaseModel):
     """Shape Claude must return for each change item."""
     id: str
+    location: str = ""
     pageUrl: str
     changeType: ChangeType
     priority: ChangePriority
-    impactScore: Optional[int] = Field(default=None, ge=0, le=10)
+    impactScore: Optional[int] = Field(default=None, ge=1, le=100)
     destination: ChangeDestination
     fieldLabel: str
     currentState: str
     proposedContent: str
     sourceExcerpt: Optional[str] = None
+    needsReview: bool = False
+    reviewReason: Optional[str] = None
 
 
 class ExtractedChangesEnvelope(BaseModel):
@@ -54,6 +60,7 @@ class ExtractedChangesEnvelope(BaseModel):
 class ChangeResponse(BaseModel):
     id: UUID
     suggestion_id: UUID
+    location: Optional[str] = None
     page_url: str
     change_type: ChangeType
     priority: ChangePriority
@@ -64,6 +71,8 @@ class ChangeResponse(BaseModel):
     proposed_content: str
     edited_content: Optional[str]
     source_excerpt: Optional[str]
+    needs_review: bool = False
+    review_reason: Optional[str] = None
     approval_status: ApprovalStatus
     created_at: datetime
     updated_at: datetime
@@ -93,7 +102,7 @@ class PayloadRequest(BaseModel):
 
 class PayloadResponse(BaseModel):
     destination: ChangeDestination
-    content: str  # HTML string or JSON-serialised Mailchimp payload
+    content: str  # HTML payload string
     change_ids: list[UUID]
 
 
@@ -110,6 +119,8 @@ class PublishItemResult(BaseModel):
     page_url: str
     success: bool
     error: Optional[str] = None
+    widget_id: Optional[str] = None
+    widget_type: Optional[str] = None
 
 
 class PublishResponse(BaseModel):

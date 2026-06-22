@@ -10,7 +10,7 @@ import { PublishConfirmModal } from "@/components/change-suggestions/publish-con
 import { formatApiError } from "@/lib/format-api-error";
 import { Download, Copy, CheckCircle2, Loader2, AlertTriangle } from "lucide-react";
 
-const DESTINATIONS: ChangeDestination[] = ["WordPress", "Webflow", "Wix", "Mailchimp"];
+const DESTINATIONS: ChangeDestination[] = ["WordPress", "Webflow", "Wix"];
 
 type DestState = {
   payload: string | null;
@@ -62,7 +62,7 @@ export function PublishStep() {
   const handleDownload = (dest: ChangeDestination) => {
     const state = getState(dest);
     if (!state.payload) return;
-    const ext = dest === "Mailchimp" ? "json" : "html";
+    const ext = "html";
     const blob = new Blob([state.payload], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

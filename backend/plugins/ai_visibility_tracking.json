@@ -32,9 +32,9 @@
       "name": "competitors",
       "label": "Key Competitors",
       "type": "textarea",
-      "required": true,
+      "required": false,
       "placeholder": "Competitor A\nCompetitor B\nCompetitor C",
-      "help_text": "Main competitors — one per line"
+      "help_text": "Main competitors — one per line. Optional: the pipeline can discover competitors automatically."
     },
     {
       "name": "value_proposition",

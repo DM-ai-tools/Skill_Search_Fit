@@ -49,7 +49,7 @@ export function HeaderProjectControls() {
   }
 
   return (
-    <div className="hidden min-w-0 items-center gap-1 rounded-xl border border-border/55 bg-surface/50 p-1 shadow-[inset_0_1px_0_rgba(244,241,236,0.04)] sm:flex">
+    <div className="hidden min-w-0 items-center gap-1 rounded-xl border border-border/55 bg-surface/50 p-1 surface-inset-edge sm:flex">
       <div className="relative min-w-0">
         <div className="pointer-events-none absolute left-2 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md border border-primary/15 bg-primary/10">
           <FolderKanban className="h-3 w-3 text-primary" />

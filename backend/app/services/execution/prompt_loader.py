@@ -1,8 +1,23 @@
 """Load and render plugin prompts from the database."""
 import re
+from pathlib import Path
 from uuid import UUID
 
 import asyncpg
+
+from app.services.change_suggestions.plugin_specs import (
+    get_report_addon,
+    resolve_plugin_slug,
+)
+
+_IMPLEMENTATION_GUIDANCE_PATH = (
+    Path(__file__).resolve().parents[3] / "plugins" / "_implementation_output_guidance.txt"
+)
+_IMPLEMENTATION_GUIDANCE = (
+    _IMPLEMENTATION_GUIDANCE_PATH.read_text(encoding="utf-8")
+    if _IMPLEMENTATION_GUIDANCE_PATH.exists()
+    else ""
+)
 
 PLATFORM_LABELS = {
     "all": "ChatGPT, Claude, Gemini, Perplexity",
@@ -212,7 +227,19 @@ async def load_prompt(conn: asyncpg.Connection, plugin_id: UUID, prompt_type: st
         plugin_id,
         prompt_type,
     )
-    return row["prompt_content"] if row else ""
+    content = row["prompt_content"] if row else ""
+    if prompt_type == "system" and content:
+        plugin_row = await conn.fetchrow(
+            "SELECT plugin_name FROM plugins WHERE id = $1",
+            plugin_id,
+        )
+        slug = resolve_plugin_slug(plugin_name=plugin_row["plugin_name"] if plugin_row else None)
+        plugin_addon = get_report_addon(slug)
+        if plugin_addon and "PLUGIN-SPECIFIC" not in content and "Implementation Changes" not in content:
+            content = content.rstrip() + plugin_addon
+        elif _IMPLEMENTATION_GUIDANCE and "Implementation Changes" not in content:
+            content = content.rstrip() + _IMPLEMENTATION_GUIDANCE
+    return content
 
 
 async def load_rendered_prompt(
