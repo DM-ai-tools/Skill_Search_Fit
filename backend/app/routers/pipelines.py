@@ -14,6 +14,7 @@ from app.schemas.pipelines import (
     PipelineStep,
     PipelineStepExecuteRequest,
     PipelineStepResult,
+    PublishReadyPageResponse,
     UnifiedPipelineReport,
 )
 from app.services.execution.pipeline_runner import (
@@ -95,6 +96,46 @@ async def unified_pipeline_report(
         domain=domain,
     )
     return report
+
+
+@router.get("/{pipeline_id}/assembled-page", response_model=PublishReadyPageResponse)
+async def assembled_pipeline_page(
+    request: Request,
+    pipeline_id: str,
+    project_id: UUID = Query(...),
+    site_url: str = Query(default=""),
+):
+    """Assemble a publish-ready page from pipeline step outputs.
+
+    Fetches the most recent completed step results and runs them through
+    the content page assembler to produce a structured, download-ready
+    publish-ready page object.
+    """
+    user = require_user(request)
+    pool = get_pool()
+
+    result = await get_pipeline_recent_results(
+        pool,
+        pipeline_id=pipeline_id,
+        project_id=project_id,
+        user_id=user.id,
+    )
+    if not result:
+        raise not_found("No completed pipeline results found for this project")
+
+    # Sanitize site_url for prompt injection safety
+    safe_site_url = site_url.replace("\n", " ").replace("\r", " ")[:253]
+
+    from app.services.reports.content_page_assembler import assemble_publish_ready_page
+
+    page = await assemble_publish_ready_page(
+        pipeline_run_id=str(result.get("steps", [{}])[0].get("execution_id", "unknown"))
+        if result.get("steps")
+        else "unknown",
+        steps=result["steps"],
+        site_url=safe_site_url,
+    )
+    return page
 
 
 @router.post("/{pipeline_id}/execute-step", response_model=PipelineStepResult)

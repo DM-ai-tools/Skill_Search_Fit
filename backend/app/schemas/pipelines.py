@@ -83,3 +83,17 @@ class UnifiedPipelineReport(BaseModel):
     narrative: str = ""
     sections: list[UnifiedPipelineSection] = Field(default_factory=list)
     final_deliverable: UnifiedFinalDeliverable | None = None
+
+
+class PublishReadyPageResponse(BaseModel):
+    """Loosely typed response for the assembled page — all blocks are dicts
+    because the assembler returns deeply nested structures that vary by pipeline."""
+
+    pipeline_run_id: str = ""
+    assembled_at: str = ""
+    domain: str = ""
+    slug: str = ""
+    full_url: str = ""
+    validation: dict[str, Any] = Field(default_factory=dict)
+    blocks: dict[str, Any] = Field(default_factory=dict)
+    downloads: dict[str, Any] = Field(default_factory=dict)
