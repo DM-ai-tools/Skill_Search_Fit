@@ -221,8 +221,8 @@ def test_validate_completeness_missing_title_adds_error():
             "h1": "Some H1",
             "article_body": "x " * 300,
             "primary_kw": "keyword",
-            "schema_jsonld": "",
-            "schema_valid": False,
+            "schema_jsonld": '{"@type":"Article"}',
+            "schema_valid": True,
         }
     )
     assert result["is_complete"] is False
@@ -230,6 +230,10 @@ def test_validate_completeness_missing_title_adds_error():
 
 
 def test_validate_completeness_invalid_schema_adds_error():
+    # Tests the defensive branch in _validate_completeness directly.
+    # In real pipeline usage, _extract_schema_json always returns ("", False)
+    # for invalid JSON — it never produces a non-empty invalid schema string.
+    # This test covers the validation function in isolation.
     result = _validate_completeness(
         {
             "title_tag": "Title Tag Here For Testing Purposes",
@@ -237,8 +241,8 @@ def test_validate_completeness_invalid_schema_adds_error():
             "h1": "H1 Here",
             "article_body": "x " * 300,
             "primary_kw": "keyword",
-            "schema_jsonld": "bad json",
-            "schema_valid": False,
+            "schema_jsonld": '{"@type":"Article"}',  # truthy
+            "schema_valid": False,  # but marked invalid (artificial state)
         }
     )
     assert not result["is_complete"]
@@ -342,49 +346,36 @@ SAMPLE_STEPS = [
     },
 ]
 
+# Module-level result so integration tests share one assembly call.
+_SAMPLE_RESULT = asyncio.run(
+    assemble_publish_ready_page("run-123", SAMPLE_STEPS, "https://example.com")
+)
+
 
 def test_assemble_returns_all_top_level_keys():
-    result = asyncio.run(
-        assemble_publish_ready_page("run-123", SAMPLE_STEPS, "https://example.com")
-    )
     for key in ("pipeline_run_id", "assembled_at", "domain", "slug", "full_url", "validation", "blocks", "downloads"):
-        assert key in result, f"Missing top-level key: {key}"
+        assert key in _SAMPLE_RESULT, f"Missing top-level key: {key}"
 
 
 def test_assemble_slug_built_from_primary_keyword():
-    result = asyncio.run(
-        assemble_publish_ready_page("run-123", SAMPLE_STEPS, "https://example.com")
-    )
-    assert "best" in result["slug"]
-    assert "ai" in result["slug"]
+    assert "best" in _SAMPLE_RESULT["slug"]
+    assert "ai" in _SAMPLE_RESULT["slug"]
 
 
 def test_assemble_full_url_includes_site_url():
-    result = asyncio.run(
-        assemble_publish_ready_page("run-123", SAMPLE_STEPS, "https://example.com")
-    )
-    assert result["full_url"].startswith("https://example.com")
+    assert _SAMPLE_RESULT["full_url"].startswith("https://example.com")
 
 
 def test_assemble_validation_is_complete_with_good_steps():
-    result = asyncio.run(
-        assemble_publish_ready_page("run-123", SAMPLE_STEPS, "https://example.com")
-    )
-    assert result["validation"]["is_complete"] is True
+    assert _SAMPLE_RESULT["validation"]["is_complete"] is True
 
 
 def test_assemble_extracts_title_tag():
-    result = asyncio.run(
-        assemble_publish_ready_page("run-123", SAMPLE_STEPS, "https://example.com")
-    )
-    assert "Best AI Tools" in result["blocks"]["head"]["title_tag"]
+    assert "Best AI Tools" in _SAMPLE_RESULT["blocks"]["head"]["title_tag"]
 
 
 def test_assemble_schema_is_valid():
-    result = asyncio.run(
-        assemble_publish_ready_page("run-123", SAMPLE_STEPS, "https://example.com")
-    )
-    assert result["blocks"]["head"]["schema_valid"] is True
+    assert _SAMPLE_RESULT["blocks"]["head"]["schema_valid"] is True
 
 
 def test_assemble_html_file_has_doctype():
@@ -395,10 +386,7 @@ def test_assemble_html_file_has_doctype():
 
 
 def test_assemble_inbound_links_extracted():
-    result = asyncio.run(
-        assemble_publish_ready_page("run-123", SAMPLE_STEPS)
-    )
-    links = result["blocks"]["internal_linking_instructions"]["inbound_links"]
+    links = _SAMPLE_RESULT["blocks"]["internal_linking_instructions"]["inbound_links"]
     assert len(links) >= 1
 
 
@@ -411,10 +399,7 @@ def test_assemble_empty_steps_returns_validation_errors():
 
 
 def test_assemble_pillar_link_detected():
-    result = asyncio.run(
-        assemble_publish_ready_page("run-123", SAMPLE_STEPS)
-    )
-    assert result["blocks"]["internal_linking_instructions"]["pillar_link_confirmed"] is True
+    assert _SAMPLE_RESULT["blocks"]["internal_linking_instructions"]["pillar_link_confirmed"] is True
 
 
 # ── _build_image_brief ────────────────────────────────────────────────────────
