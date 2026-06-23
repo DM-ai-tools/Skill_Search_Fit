@@ -50,3 +50,36 @@ class PipelineExecuteResponse(BaseModel):
     steps: list[PipelineStepResult]
     combined_markdown: str
     workflow_steps: list[dict[str, Any]]
+
+
+class UnifiedPipelineSection(BaseModel):
+    id: str
+    title: str
+    source_step_labels: list[str] = Field(default_factory=list)
+    source_step_numbers: list[int] = Field(default_factory=list)
+    metrics: dict[str, Any] = Field(default_factory=dict)
+    combined_markdown: str = ""
+    expandable: bool = False
+
+
+class UnifiedHeadlineSummary(BaseModel):
+    outcome: str = ""
+    key_metrics: dict[str, Any] = Field(default_factory=dict)
+
+
+class UnifiedFinalDeliverable(BaseModel):
+    title_tag: str = ""
+    meta_description: str = ""
+    h1: str = ""
+    article_body: str = ""
+
+
+class UnifiedPipelineReport(BaseModel):
+    pipeline_id: str
+    pipeline_name: str
+    pipeline_purpose: str = ""
+    domain: str = ""
+    headline_summary: UnifiedHeadlineSummary = Field(default_factory=UnifiedHeadlineSummary)
+    narrative: str = ""
+    sections: list[UnifiedPipelineSection] = Field(default_factory=list)
+    final_deliverable: UnifiedFinalDeliverable | None = None
