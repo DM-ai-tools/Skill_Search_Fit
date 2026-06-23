@@ -240,3 +240,83 @@ export interface UnifiedPipelineReport {
   sections: UnifiedPipelineSection[];
   final_deliverable: UnifiedFinalDeliverable | null;
 }
+
+export interface PublishReadyValidation {
+  is_complete: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface PageHead {
+  title_tag: string;
+  meta_description: string;
+  canonical_url: string;
+  schema_jsonld: string;
+  schema_valid: boolean;
+  full_head_html: string;
+  open_graph: {
+    title: string;
+    description: string;
+    url: string;
+    type: string;
+    image: string;
+  };
+  twitter_card: {
+    card: string;
+    title: string;
+    description: string;
+  };
+  robots: string;
+}
+
+export interface PageBody {
+  h1: string;
+  full_body_markdown: string;
+  word_count: number;
+}
+
+export interface InternalLinkInstruction {
+  source_page: string;
+  find_text: string;
+  anchor_text: string;
+  placement: string;
+}
+
+export interface InternalLinkingInstructions {
+  inbound_links: InternalLinkInstruction[];
+  outbound_links_inserted: boolean;
+  pillar_link_confirmed: boolean;
+  orphan_status: string;
+}
+
+export interface ImageBriefItem {
+  position: string;
+  alt_text: string;
+  dimensions: string;
+  content_description: string;
+  file_name: string;
+}
+
+export interface PublishReadyPage {
+  pipeline_run_id: string;
+  assembled_at: string;
+  domain: string;
+  slug: string;
+  full_url: string;
+  validation: PublishReadyValidation;
+  blocks: {
+    head: PageHead;
+    url_slug: {
+      slug: string;
+      full_url: string;
+      breadcrumb: string;
+    };
+    body: PageBody;
+    internal_linking_instructions: InternalLinkingInstructions;
+    image_brief: ImageBriefItem[];
+    publish_checklist: string;
+  };
+  downloads: {
+    html_file: string;
+  };
+}
