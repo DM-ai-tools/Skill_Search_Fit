@@ -1,7 +1,6 @@
 """Unit tests for content_page_assembler — all sync, no I/O."""
 
 import asyncio
-import json
 
 from app.services.reports.content_page_assembler import (
     _build_image_brief,
@@ -416,3 +415,228 @@ def test_assemble_pillar_link_detected():
         assemble_publish_ready_page("run-123", SAMPLE_STEPS)
     )
     assert result["blocks"]["internal_linking_instructions"]["pillar_link_confirmed"] is True
+
+
+# ── _build_image_brief ────────────────────────────────────────────────────────
+
+def test_build_image_brief_hero_image_gets_1200x628():
+    """Hero image (index 0) should get dimensions 1200x628."""
+    alts = ["Hero image showing AI dashboard", "Secondary image"]
+    result = _build_image_brief(alts)
+    assert result[0]["dimensions"] == "1200x628"
+
+
+def test_build_image_brief_second_image_gets_800x450():
+    """Second image (index 1) should get dimensions 800x450."""
+    alts = ["First image", "Second image showing dashboard", "Third image"]
+    result = _build_image_brief(alts)
+    assert result[1]["dimensions"] == "800x450"
+
+
+def test_build_image_brief_each_item_has_required_keys():
+    """Each image brief item should have all required keys."""
+    alts = ["Test alt text"]
+    result = _build_image_brief(alts)
+    required_keys = {"position", "alt_text", "dimensions", "content_description", "file_name"}
+    assert all(key in result[0] for key in required_keys)
+
+
+def test_build_image_brief_position_label():
+    """Position should be formatted as 'Image {i+1}'."""
+    alts = ["First", "Second", "Third"]
+    result = _build_image_brief(alts)
+    assert result[0]["position"] == "Image 1"
+    assert result[1]["position"] == "Image 2"
+    assert result[2]["position"] == "Image 3"
+
+
+def test_build_image_brief_file_name_from_alt():
+    """File name should be derived from alt text with slugified format."""
+    alts = ["Hero Image Showing Dashboard"]
+    result = _build_image_brief(alts)
+    assert "hero" in result[0]["file_name"].lower()
+    assert result[0]["file_name"].endswith(".webp")
+    assert "-1.webp" in result[0]["file_name"]
+
+
+def test_build_image_brief_empty_list_returns_empty_list():
+    """Empty alt list should return empty list."""
+    result = _build_image_brief([])
+    assert result == []
+
+
+def test_build_image_brief_alt_text_preserved():
+    """Alt text should be preserved exactly as provided."""
+    alts = ["Complex alt text: with special chars!"]
+    result = _build_image_brief(alts)
+    assert result[0]["alt_text"] == alts[0]
+
+
+def test_build_image_brief_third_image_also_gets_800x450():
+    """All images after the first should get default 800x450 dimensions."""
+    alts = ["First", "Second", "Third", "Fourth", "Fifth"]
+    result = _build_image_brief(alts)
+    assert result[0]["dimensions"] == "1200x628"
+    for i in range(1, len(result)):
+        assert result[i]["dimensions"] == "800x450", f"Image {i+1} should have 800x450"
+
+
+# ── _build_publish_checklist ──────────────────────────────────────────────────
+
+def test_build_publish_checklist_contains_title_tag_value():
+    """Checklist should contain the interpolated title_tag value."""
+    title = "Best AI Tools for Small Business"
+    result = _build_publish_checklist(
+        title_tag=title,
+        canonical_url="https://example.com/page",
+        slug="/page",
+        primary_kw="best AI tools",
+        word_count=2500,
+        image_alts=["Hero image"],
+    )
+    assert title in result
+
+
+def test_build_publish_checklist_missing_title_shows_placeholder():
+    """Missing title_tag should show [MISSING] placeholder."""
+    result = _build_publish_checklist(
+        title_tag="",
+        canonical_url="https://example.com/page",
+        slug="/page",
+        primary_kw="keyword",
+        word_count=2500,
+        image_alts=["Hero image"],
+    )
+    assert "[MISSING]" in result
+
+
+def test_build_publish_checklist_missing_canonical_url_shows_placeholder():
+    """Missing canonical_url should show [MISSING] placeholder."""
+    result = _build_publish_checklist(
+        title_tag="Title",
+        canonical_url="",
+        slug="/page",
+        primary_kw="keyword",
+        word_count=2500,
+        image_alts=["Hero image"],
+    )
+    assert "[MISSING]" in result
+
+
+def test_build_publish_checklist_missing_slug_shows_placeholder():
+    """Missing slug should show [MISSING] placeholder."""
+    result = _build_publish_checklist(
+        title_tag="Title",
+        canonical_url="https://example.com/page",
+        slug="",
+        primary_kw="keyword",
+        word_count=2500,
+        image_alts=["Hero image"],
+    )
+    assert "[MISSING]" in result
+
+
+def test_build_publish_checklist_missing_primary_keyword_shows_placeholder():
+    """Missing primary_kw should show [MISSING] placeholder."""
+    result = _build_publish_checklist(
+        title_tag="Title",
+        canonical_url="https://example.com/page",
+        slug="/page",
+        primary_kw="",
+        word_count=2500,
+        image_alts=["Hero image"],
+    )
+    assert "[MISSING]" in result
+
+
+def test_build_publish_checklist_contains_checkbox_markers():
+    """Checklist should contain checkbox markers (- [ ])."""
+    result = _build_publish_checklist(
+        title_tag="Title",
+        canonical_url="https://example.com/page",
+        slug="/page",
+        primary_kw="keyword",
+        word_count=2500,
+        image_alts=["Hero image"],
+    )
+    assert "- [ ]" in result
+
+
+def test_build_publish_checklist_contains_word_count():
+    """Checklist should show the word count in output."""
+    word_count = 3500
+    result = _build_publish_checklist(
+        title_tag="Title",
+        canonical_url="https://example.com/page",
+        slug="/page",
+        primary_kw="keyword",
+        word_count=word_count,
+        image_alts=["Hero image"],
+    )
+    assert str(word_count) in result
+
+
+def test_build_publish_checklist_contains_seo_section():
+    """Checklist should contain SEO section."""
+    result = _build_publish_checklist(
+        title_tag="Title",
+        canonical_url="https://example.com/page",
+        slug="/page",
+        primary_kw="keyword",
+        word_count=2500,
+        image_alts=["Hero image"],
+    )
+    assert "## SEO" in result
+
+
+def test_build_publish_checklist_contains_content_section():
+    """Checklist should contain CONTENT section."""
+    result = _build_publish_checklist(
+        title_tag="Title",
+        canonical_url="https://example.com/page",
+        slug="/page",
+        primary_kw="keyword",
+        word_count=2500,
+        image_alts=["Hero image"],
+    )
+    assert "## CONTENT" in result
+
+
+def test_build_publish_checklist_contains_images_section():
+    """Checklist should contain IMAGES section."""
+    result = _build_publish_checklist(
+        title_tag="Title",
+        canonical_url="https://example.com/page",
+        slug="/page",
+        primary_kw="keyword",
+        word_count=2500,
+        image_alts=["Hero image"],
+    )
+    assert "## IMAGES" in result
+
+
+def test_build_publish_checklist_hero_alt_from_first_image():
+    """Hero alt should come from first image in alts list."""
+    hero_alt = "Complex hero image with special characters!"
+    result = _build_publish_checklist(
+        title_tag="Title",
+        canonical_url="https://example.com/page",
+        slug="/page",
+        primary_kw="keyword",
+        word_count=2500,
+        image_alts=[hero_alt, "Secondary"],
+    )
+    assert hero_alt in result
+
+
+def test_build_publish_checklist_empty_image_alts_shows_placeholder():
+    """Empty image_alts should show placeholder for hero alt."""
+    result = _build_publish_checklist(
+        title_tag="Title",
+        canonical_url="https://example.com/page",
+        slug="/page",
+        primary_kw="keyword",
+        word_count=2500,
+        image_alts=[],
+    )
+    assert "[hero image alt text]" in result
