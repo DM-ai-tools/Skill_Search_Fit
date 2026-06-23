@@ -209,3 +209,34 @@ export interface AdminConfigEntry {
   category: string;
   description: string;
 }
+
+export interface UnifiedPipelineSection {
+  id: string;
+  title: string;
+  source_step_labels: string[];
+  source_step_numbers: number[];
+  metrics: Record<string, string | number>;
+  combined_markdown: string;
+  expandable: boolean;
+}
+
+export interface UnifiedFinalDeliverable {
+  title_tag: string;
+  meta_description: string;
+  h1: string;
+  article_body: string;
+}
+
+export interface UnifiedPipelineReport {
+  pipeline_id: string;
+  pipeline_name: string;
+  pipeline_purpose: string;
+  domain: string;
+  headline_summary: {
+    outcome: string;
+    key_metrics: Record<string, string | number>;
+  };
+  narrative: string;
+  sections: UnifiedPipelineSection[];
+  final_deliverable: UnifiedFinalDeliverable | null;
+}
