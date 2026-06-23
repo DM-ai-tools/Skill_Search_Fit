@@ -257,8 +257,9 @@ async def _generate_narrative(
 
     Returns an empty string on any error (narrative is non-critical).
     """
+    domain = domain.replace("\n", " ").replace("\r", " ")[:253]
     key_outputs = "\n".join(
-        f"- Step {s['step']} ({s['label']}): {s['output_markdown'][:400].strip()}"
+        f"- Step {s.get('step', '?')} ({s.get('label', 'Unknown')}): {s.get('output_markdown', '')[:400].strip()}"
         for s in steps
     )
     system = (
@@ -313,7 +314,7 @@ async def synthesize_pipeline_report(
 
     if config is None:
         combined = "\n\n---\n\n".join(
-            f"### Step {s['step']}: {s['label']}\n\n{s['output_markdown']}"
+            f"### Step {s.get('step', '?')}: {s.get('label', 'Unknown')}\n\n{s.get('output_markdown', '')}"
             for s in steps
         )
         fallback_outcome = (

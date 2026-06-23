@@ -246,17 +246,20 @@ export default function PipelineReportViewPage() {
 
   if (unifiedReport && !useFallback) {
     return (
-      <UnifiedPipelineReportView
-        report={unifiedReport}
-        onSave={legacyResult ? handleSaveAll : undefined}
-        saving={saving}
-        saveMessage={saveMessage}
-        error={error}
-        onDownloadPdf={legacyResult ? handleDownloadPdf : undefined}
-        pdfDownloading={pdfDownloading}
-        backHref="/dashboard"
-        backLabel="Back to dashboard"
-      />
+      <>
+        {/* TODO: wire onSave/onDownloadPdf on the primary unified path (requires a separate recent-results fetch) */}
+        <UnifiedPipelineReportView
+          report={unifiedReport}
+          onSave={legacyResult ? handleSaveAll : undefined}
+          saving={saving}
+          saveMessage={saveMessage}
+          error={error}
+          onDownloadPdf={legacyResult ? handleDownloadPdf : undefined}
+          pdfDownloading={pdfDownloading}
+          backHref="/dashboard"
+          backLabel="Back to dashboard"
+        />
+      </>
     );
   }
 

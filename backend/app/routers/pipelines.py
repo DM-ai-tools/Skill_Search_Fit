@@ -61,7 +61,7 @@ async def recent_pipeline_results(
     return PipelineExecuteResponse(**result)
 
 
-@router.get("/{pipeline_id}/unified-report")
+@router.get("/{pipeline_id}/unified-report", response_model=UnifiedPipelineReport)
 async def unified_pipeline_report(
     request: Request,
     pipeline_id: str,
