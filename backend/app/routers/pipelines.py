@@ -14,6 +14,7 @@ from app.schemas.pipelines import (
     PipelineStep,
     PipelineStepExecuteRequest,
     PipelineStepResult,
+    UnifiedPipelineReport,
 )
 from app.services.execution.pipeline_runner import (
     get_pipeline_recent_results,
@@ -58,6 +59,42 @@ async def recent_pipeline_results(
     if not result:
         raise not_found("No completed pipeline results found for this project")
     return PipelineExecuteResponse(**result)
+
+
+@router.get("/{pipeline_id}/unified-report")
+async def unified_pipeline_report(
+    request: Request,
+    pipeline_id: str,
+    project_id: UUID = Query(...),
+    domain: str = Query(default=""),
+):
+    """Return a synthesised unified pipeline report.
+
+    Fetches the most recent completed step results for this pipeline and
+    project, then calls the synthesiser to organise them by pipeline purpose
+    and generate an AI executive narrative.
+    """
+    user = require_user(request)
+    pool = get_pool()
+
+    result = await get_pipeline_recent_results(
+        pool,
+        pipeline_id=pipeline_id,
+        project_id=project_id,
+        user_id=user.id,
+    )
+    if not result:
+        raise not_found("No completed pipeline results found for this project")
+
+    from app.services.reports.pipeline_synthesizer import synthesize_pipeline_report
+
+    report = await synthesize_pipeline_report(
+        pipeline_id=pipeline_id,
+        pipeline_name=result["pipeline_name"],
+        steps=result["steps"],
+        domain=domain,
+    )
+    return report
 
 
 @router.post("/{pipeline_id}/execute-step", response_model=PipelineStepResult)
