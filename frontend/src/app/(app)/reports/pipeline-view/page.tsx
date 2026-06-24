@@ -17,8 +17,7 @@ import {
 import { UnifiedPipelineReportView } from "@/components/reports/unified-pipeline-report";
 import { PublishReadyPageView } from "@/components/reports/publish-ready-page";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { PipelineExecuteResponse, UnifiedPipelineReport } from "@/lib/types";
-import type { PublishReadyPage } from "@/lib/types";
+import type { PipelineExecuteResponse, PublishReadyPage, UnifiedPipelineReport } from "@/lib/types";
 import { useProjectStore } from "@/stores/project-store";
 
 export default function PipelineReportViewPage() {
@@ -123,7 +122,7 @@ export default function PipelineReportViewPage() {
     return () => {
       cancelled = true;
     };
-  }, [pipelineId, effectiveProjectId, domain]);
+  }, [pipelineId, effectiveProjectId, domain, siteUrlParam]);
 
   // ── Legacy view helpers (only used when useFallback === true) ────────────
 
