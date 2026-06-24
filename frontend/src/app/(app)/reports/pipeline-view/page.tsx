@@ -15,8 +15,10 @@ import {
   buildPipelineStepReports,
 } from "@/components/reports/structured-report-view";
 import { UnifiedPipelineReportView } from "@/components/reports/unified-pipeline-report";
+import { PublishReadyPageView } from "@/components/reports/publish-ready-page";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { PipelineExecuteResponse, UnifiedPipelineReport } from "@/lib/types";
+import type { PublishReadyPage } from "@/lib/types";
 import { useProjectStore } from "@/stores/project-store";
 
 export default function PipelineReportViewPage() {
@@ -30,6 +32,7 @@ export default function PipelineReportViewPage() {
   // Unified report state (primary path)
   const [unifiedReport, setUnifiedReport] = useState<UnifiedPipelineReport | null>(null);
   const [unifiedLoading, setUnifiedLoading] = useState(true);
+  const [assembledPage, setAssembledPage] = useState<PublishReadyPage | null>(null);
 
   // Fallback (legacy stacked view) state
   const [legacyResult, setLegacyResult] = useState<PipelineExecuteResponse | null>(null);
@@ -75,17 +78,28 @@ export default function PipelineReportViewPage() {
         // Non-critical — pipeline name just shows as default
       }
 
-      // ── Primary path: unified report ──────────────────────────────────────
+      // ── Primary path: unified report + assembled page in parallel ────────
       try {
         const domainParam = domain ? `&domain=${encodeURIComponent(domain)}` : "";
-        const data = await api.get<UnifiedPipelineReport>(
-          `/pipelines/${pipelineId}/unified-report?project_id=${encodeURIComponent(effectiveProjectId)}${domainParam}`,
-        );
+        const siteParam = siteUrlParam ? `&site_url=${encodeURIComponent(siteUrlParam)}` : "";
+
+        const [unifiedData, assembledData] = await Promise.allSettled([
+          api.get<UnifiedPipelineReport>(
+            `/pipelines/${pipelineId}/unified-report?project_id=${encodeURIComponent(effectiveProjectId)}${domainParam}`,
+          ),
+          pipelineId === "full-content-page-pipeline"
+            ? api.get<PublishReadyPage>(
+                `/pipelines/${pipelineId}/assembled-page?project_id=${encodeURIComponent(effectiveProjectId)}${siteParam}`,
+              )
+            : Promise.reject(new Error("not full-content pipeline")),
+        ]);
+
         if (!cancelled) {
-          setUnifiedReport(data);
+          if (unifiedData.status === "fulfilled") setUnifiedReport(unifiedData.value);
+          if (assembledData.status === "fulfilled") setAssembledPage(assembledData.value);
           setUnifiedLoading(false);
         }
-        return; // ← unified path succeeded; skip fallback fetch
+        return; // ← primary path done; skip fallback
       } catch {
         // Unified report unavailable — fall through to legacy view
       }
@@ -246,8 +260,13 @@ export default function PipelineReportViewPage() {
 
   if (unifiedReport && !useFallback) {
     return (
-      <>
-        {/* TODO: wire onSave/onDownloadPdf on the primary unified path (requires a separate recent-results fetch) */}
+      <div className="space-y-6">
+        {/* Publish-ready page section — only for full-content pipeline */}
+        {assembledPage && (
+          <PublishReadyPageView page={assembledPage} />
+        )}
+
+        {/* Unified report sections below */}
         <UnifiedPipelineReportView
           report={unifiedReport}
           onSave={legacyResult ? handleSaveAll : undefined}
@@ -259,7 +278,7 @@ export default function PipelineReportViewPage() {
           backHref="/dashboard"
           backLabel="Back to dashboard"
         />
-      </>
+      </div>
     );
   }
 
