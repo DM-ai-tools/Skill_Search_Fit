@@ -94,7 +94,12 @@ export default function PipelineReportViewPage() {
         ]);
 
         if (!cancelled) {
-          if (unifiedData.status === "fulfilled") setUnifiedReport(unifiedData.value);
+          if (unifiedData.status === "fulfilled") {
+            setUnifiedReport(unifiedData.value);
+          } else {
+            // Unified report failed — fall through to legacy view
+            throw unifiedData.reason;
+          }
           if (assembledData.status === "fulfilled") setAssembledPage(assembledData.value);
           setUnifiedLoading(false);
         }

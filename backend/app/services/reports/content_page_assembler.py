@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 import re
 from datetime import datetime, timezone
@@ -218,19 +219,22 @@ def _build_meta_html(
 ) -> str:
     """Build the complete HTML <head> block as a string."""
     og_image = og_image_placeholder or "[HERO_IMAGE_URL_1200x628]"
+    _title = html.escape(title_tag)
+    _desc = html.escape(meta_description)
+    _canon = html.escape(canonical_url)
     parts = [
-        f"<title>{title_tag}</title>" if title_tag else "",
-        f'<meta name="description" content="{meta_description}">' if meta_description else "",
-        f'<link rel="canonical" href="{canonical_url}">' if canonical_url else "",
+        f"<title>{_title}</title>" if _title else "",
+        f'<meta name="description" content="{_desc}">' if _desc else "",
+        f'<link rel="canonical" href="{_canon}">' if _canon else "",
         '<meta name="robots" content="index, follow">',
-        f'<meta property="og:title" content="{title_tag}">',
-        f'<meta property="og:description" content="{meta_description}">',
-        f'<meta property="og:url" content="{canonical_url}">',
+        f'<meta property="og:title" content="{_title}">',
+        f'<meta property="og:description" content="{_desc}">',
+        f'<meta property="og:url" content="{_canon}">',
         '<meta property="og:type" content="article">',
         f'<meta property="og:image" content="{og_image}">',
         '<meta name="twitter:card" content="summary_large_image">',
-        f'<meta name="twitter:title" content="{title_tag}">',
-        f'<meta name="twitter:description" content="{meta_description}">',
+        f'<meta name="twitter:title" content="{_title}">',
+        f'<meta name="twitter:description" content="{_desc}">',
     ]
     if schema_jsonld:
         parts.append(schema_jsonld)
@@ -332,7 +336,7 @@ def _generate_html_file(
 </head>
 <body>
   <article>
-    <h1>{h1}</h1>
+    <h1>{html.escape(h1)}</h1>
     {article_body}
   </article>
 </body>
