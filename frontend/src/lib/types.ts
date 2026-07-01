@@ -121,10 +121,99 @@ export interface PipelineStepResult {
 export interface PipelineExecuteResponse {
   pipeline_id: string;
   pipeline_name: string;
+  pipeline_run_id?: string | null;
   status: string;
   steps: PipelineStepResult[];
   combined_markdown: string;
   workflow_steps: { step: number; label: string; status: string }[];
+}
+
+export interface PipelineInputFieldDef {
+  key: string;
+  label: string;
+  description?: string;
+  type: string;
+  editNote?: string;
+  editable?: boolean;
+  required?: boolean;
+  value: unknown;
+}
+
+export type PipelineSuggestionApprovalStatus = "pending" | "approved" | "rejected";
+
+export interface PipelineChangeSuggestion {
+  id: string;
+  field_key: string;
+  field_label: string;
+  field_type: string;
+  current_content: unknown;
+  proposed_content: unknown;
+  edited_content?: unknown | null;
+  approval_status: PipelineSuggestionApprovalStatus;
+}
+
+export interface PipelinePendingInputs {
+  step_index: number;
+  plugin_name: string;
+  skill_name: string;
+  inputs: Record<string, unknown>;
+  field_definitions: PipelineInputFieldDef[];
+  change_suggestions?: PipelineChangeSuggestion[];
+  is_final_review?: boolean;
+}
+
+export interface PipelineRun {
+  id: string;
+  pipeline_id: string;
+  project_id: string;
+  status:
+    | "analyzing_competitors"
+    | "running"
+    | "paused_for_review"
+    | "completed"
+    | "failed"
+    | "expired";
+  current_skill_index: number;
+  base_inputs: Record<string, unknown>;
+  competitor_data: Record<string, unknown>;
+  competitor_failed: boolean;
+  prior_markdown: string[];
+  step_results: PipelineStepResult[];
+  pending_inputs: PipelinePendingInputs | null;
+  edited_inputs_count: number;
+  expires_at: string | null;
+  error_message?: string | null;
+  suggestion_audit_log?: Array<Record<string, unknown>>;
+}
+
+export interface PipelinePageVerification {
+  h1_present: boolean;
+  h1: string;
+  word_count: number;
+  schema_type: string;
+  internal_links: number;
+  meta_complete: boolean;
+  faq_present: boolean;
+  cta_present: boolean;
+}
+
+export interface PipelinePageGeneration {
+  id: string;
+  pipeline_run_id: string;
+  status: string;
+  regeneration_count: number;
+  html: string | null;
+  page_title: string | null;
+  meta_description: string | null;
+  slug: string | null;
+  full_url: string | null;
+  approved: boolean;
+  deployed: boolean;
+  wordpress_draft_url: string | null;
+  error_message: string | null;
+  h1: string;
+  verification: PipelinePageVerification;
+  redis_key: string;
 }
 
 export interface Output {
@@ -319,4 +408,41 @@ export interface PublishReadyPage {
   downloads: {
     html_file: string;
   };
+}
+
+export interface SeoTrendPoint {
+  date: string;
+  rank_position: number | null;
+  search_volume: number | null;
+  difficulty: number | null;
+}
+
+export interface SeoKeywordTrend {
+  keyword: string;
+  points: SeoTrendPoint[];
+}
+
+export interface SeoProjectTrendsResponse {
+  days: number;
+  keywords_tracked: number;
+  improved_keywords: number;
+  declined_keywords: number;
+  stable_keywords: number;
+  top10_keywords: number;
+  top3_keywords: number;
+  trends: SeoKeywordTrend[];
+}
+
+export interface TenantOrganization {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
+export interface TenantWorkspace {
+  id: string;
+  name: string;
+  organization_id: string;
+  role: string;
+  created_at: string;
 }

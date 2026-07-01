@@ -94,10 +94,10 @@ function LoginForm() {
                     Password
                   </Label>
                   <Link
-                    href="#"
+                    href="/contact"
                     className="text-xs text-primary transition-opacity hover:opacity-75"
                   >
-                    Forgot password?
+                    Need help signing in?
                   </Link>
                 </div>
                 <div className="relative mt-1.5">
@@ -114,7 +114,7 @@ function LoginForm() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted transition-colors hover:text-foreground focus:outline-none"
+                    className="absolute right-3 top-1/2 min-h-10 min-w-10 -translate-y-1/2 text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (

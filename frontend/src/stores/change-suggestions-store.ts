@@ -112,8 +112,6 @@ export const useChangeSuggestionsStore = create<ChangeSuggestionsState>()(
         suggestionId: s.suggestionId,
         filename: s.filename,
         step: s.step,
-        changes: s.changes,
-        overrides: s.overrides,
       }),
     },
   ),

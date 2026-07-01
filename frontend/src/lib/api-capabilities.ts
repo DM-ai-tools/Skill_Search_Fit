@@ -1,3 +1,7 @@
+/**
+ * Public API capability probe via /backend-health (no auth).
+ * For authenticated AI feature flags, use fetchSystemCapabilities() in system-capabilities.ts.
+ */
 function resolveHealthUrl(): string {
   if (typeof window !== "undefined") {
     return "/backend-health";

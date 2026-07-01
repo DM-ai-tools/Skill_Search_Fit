@@ -6,6 +6,10 @@
       "dockerfilePath": "Dockerfile",
       "healthcheckPath": "/health"
     },
+    "worker": {
+      "rootDirectory": "backend",
+      "dockerfilePath": "Dockerfile.worker"
+    },
     "web": {
       "rootDirectory": "frontend",
       "dockerfilePath": "Dockerfile",

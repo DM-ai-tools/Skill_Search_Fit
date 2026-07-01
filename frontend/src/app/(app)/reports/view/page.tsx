@@ -365,6 +365,7 @@ export default function ReportViewPage() {
   const [panelSuggestionId, setPanelSuggestionId] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState("");
   const [error, setError] = useState("");
+  const [pdfDownloading, setPdfDownloading] = useState(false);
 
   // Preload store — gives instant panel open when data is already cached
   const preloadCache = useChangeSuggestionsPreloadStore((s) => s.cache);
@@ -497,9 +498,29 @@ export default function ReportViewPage() {
     }
   };
 
-  const handleDownloadPdf = () => {
-    if (!markdown) return;
-    downloadReportPdf(pluginName, markdown);
+  const handleDownloadPdf = async () => {
+    if (!reportJson || structuredSections.length === 0) return;
+    setPdfDownloading(true);
+    setError("");
+    try {
+      await downloadReportPdf({
+        pluginName,
+        executionId: execution?.id,
+        siteUrl,
+        generatedAt: reportJson.generated_at,
+        status: execution?.status,
+        overallScore,
+        executiveSummary,
+        keyTakeaways,
+        sections: structuredSections,
+        metrics: metrics ?? undefined,
+        suggestions,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not generate PDF. Please try again.");
+    } finally {
+      setPdfDownloading(false);
+    }
   };
 
   const handleSaveReport = async () => {
@@ -572,9 +593,10 @@ export default function ReportViewPage() {
                   variant="outline"
                   className="gap-2"
                   onClick={handleDownloadPdf}
+                  disabled={pdfDownloading || structuredSections.length === 0}
                 >
                   <FileDown className="h-4 w-4" />
-                  Download PDF
+                  {pdfDownloading ? "Generating PDF…" : "Download PDF"}
                 </Button>
                 <Button
                   type="button"

@@ -26,10 +26,18 @@ def _headers(api_token: str) -> dict[str, str]:
 def _build_field_data(change: ChangeResponse) -> dict[str, str]:
     content = change.edited_content if change.edited_content is not None else change.proposed_content
     label = change.field_label.lower()
-    if "title" in label:
+    change_type = (change.change_type or "").lower()
+    if "title" in label or change_type == "title":
         return {"name": content}
-    if "description" in label:
+    if "description" in label or "meta" in label:
         return {"seo-description": content, "meta-description": content}
+    if any(k in label for k in ("body", "content", "html", "copy", "article", "paragraph")):
+        return {
+            "post-body": content,
+            "body": content,
+            "rich-text": content,
+            "main-content": content,
+        }
     return {change.field_label: content}
 
 

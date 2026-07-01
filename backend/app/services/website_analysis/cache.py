@@ -9,8 +9,30 @@ from uuid import UUID
 
 import asyncpg
 
+from app.cache.temp_cache import cache_delete, cache_get, cache_set
+from app.config import settings
 from app.services.website_analysis.analyzer import analyze_website, cache_expiry
 from app.services.website_analysis.url_utils import normalize_website_url, validate_website_url
+
+
+def _website_analysis_cache_key(normalized: str) -> str:
+    return f"website_analysis:{normalized}"
+
+
+def _website_analysis_ttl_seconds() -> int:
+    return max(1, settings.website_analysis_cache_days * 86_400)
+
+
+async def _get_redis_cached_analysis(normalized: str) -> dict[str, Any] | None:
+    return await cache_get(_website_analysis_cache_key(normalized))
+
+
+async def _set_redis_cached_analysis(normalized: str, payload: dict[str, Any]) -> None:
+    await cache_set(_website_analysis_cache_key(normalized), payload, _website_analysis_ttl_seconds())
+
+
+async def _invalidate_redis_cached_analysis(normalized: str) -> None:
+    await cache_delete(_website_analysis_cache_key(normalized))
 
 
 async def purge_expired_analyses(conn: asyncpg.Connection) -> int:
@@ -31,6 +53,10 @@ async def get_cached_analysis(
     if not normalized:
         return None
 
+    redis_hit = await _get_redis_cached_analysis(normalized)
+    if redis_hit:
+        return redis_hit
+
     row = await conn.fetchrow(
         """
         SELECT id, url, analysis_json, scan_status, error_message,
@@ -49,7 +75,7 @@ async def get_cached_analysis(
     if isinstance(analysis_json, str):
         analysis_json = json.loads(analysis_json)
 
-    return {
+    payload = {
         "id": str(row["id"]),
         "url": row["url"],
         "scan_status": row["scan_status"],
@@ -60,6 +86,8 @@ async def get_cached_analysis(
         "expires_at": row["expires_at"].isoformat(),
         **analysis_json,
     }
+    await _set_redis_cached_analysis(normalized, payload)
+    return payload
 
 
 async def run_website_analysis(
@@ -73,6 +101,8 @@ async def run_website_analysis(
     cached = await get_cached_analysis(conn, normalized)
     if cached:
         return cached
+
+    await _invalidate_redis_cached_analysis(normalized)
 
     await conn.execute(
         """
@@ -91,7 +121,7 @@ async def run_website_analysis(
 
     try:
         result = await analyze_website(normalized)
-        payload = {
+        analysis_payload = {
             "analysis": result["analysis"],
             "crawl": result["crawl"],
             "competitors": result.get("competitors", []),
@@ -112,7 +142,7 @@ async def run_website_analysis(
             RETURNING id, url, created_at, updated_at, expires_at
             """,
             normalized,
-            json.dumps(payload),
+            json.dumps(analysis_payload),
             scan_status,
             cache_expiry(),
         )
@@ -130,7 +160,7 @@ async def run_website_analysis(
         )
         raise
 
-    return {
+    response = {
         "id": str(row["id"]),
         "url": row["url"],
         "scan_status": scan_status,
@@ -138,5 +168,7 @@ async def run_website_analysis(
         "created_at": row["created_at"].isoformat(),
         "updated_at": row["updated_at"].isoformat(),
         "expires_at": row["expires_at"].isoformat(),
-        **payload,
+        **analysis_payload,
     }
+    await _set_redis_cached_analysis(normalized, {**response, "cached": True})
+    return response

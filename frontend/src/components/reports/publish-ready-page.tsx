@@ -1,10 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { Check, CheckSquare, Copy, Download, ExternalLink, Square } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Check, CheckSquare, Copy, Download, ExternalLink, RefreshCw, Sparkles, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AiSetupBanner } from "@/components/system/ai-setup-banner";
+import { api } from "@/lib/api";
+import { formatApiError } from "@/lib/format-api-error";
+import { parseMarkdownSections } from "@/lib/plugin-report-presenters";
+import { parseBlocksFromBody } from "@/lib/report-view-model";
+import { renderReportBlocks } from "@/components/reports/structured-report-view";
+import { cn } from "@/lib/utils";
 import type {
   ImageBriefItem,
   InternalLinkInstruction,
@@ -77,24 +84,195 @@ function SerpPreview({
 
 // ── Tab: Full Preview ──────────────────────────────────────────────────────────
 
+type PolishedArticleSection = {
+  id: string;
+  heading: string;
+  level: number;
+  content: string;
+};
+
+type PolishedArticlePreview = {
+  display_title: string;
+  display_subtitle: string;
+  sections: PolishedArticleSection[];
+  preview_model?: string;
+};
+
+function ArticlePreviewFallback({ markdown }: { markdown: string }) {
+  if (!markdown.trim()) {
+    return (
+      <p className="text-sm italic text-gray-600">No article content extracted yet.</p>
+    );
+  }
+
+  const sections = parseMarkdownSections(markdown);
+
+  return (
+    <div className="article-preview space-y-6 text-gray-900 [&_p]:text-gray-800 [&_li]:text-gray-800">
+      {sections.map((sec, i) => {
+        const blocks = parseBlocksFromBody(sec.body);
+        const headingClass =
+          sec.level <= 1
+            ? "text-xl font-bold text-gray-900"
+            : sec.level === 2
+              ? "text-lg font-semibold text-gray-900"
+              : "text-base font-semibold text-gray-800";
+
+        return (
+          <section key={`${sec.title}-${i}`}>
+            {sec.title !== "Overview" && (
+              <h2 className={`${headingClass} mb-3 mt-1`}>{sec.title}</h2>
+            )}
+            <div className="space-y-3">{renderReportBlocks(blocks)}</div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+function PolishedArticlePreviewView({ preview }: { preview: PolishedArticlePreview }) {
+  return (
+    <div className="article-preview space-y-6 text-gray-900 [&_p]:text-gray-800 [&_li]:text-gray-800">
+      {preview.sections.map((sec) => {
+        const blocks = parseBlocksFromBody(sec.content);
+        const headingClass =
+          sec.level <= 2
+            ? "text-lg font-semibold text-gray-900"
+            : "text-base font-semibold text-gray-800";
+
+        return (
+          <section key={sec.id}>
+            {sec.heading && (
+              <h2 className={`${headingClass} mb-3 mt-1`}>{sec.heading}</h2>
+            )}
+            <div className="space-y-3">
+              {blocks.length > 0 ? (
+                renderReportBlocks(blocks)
+              ) : (
+                <p className="text-[15px] leading-relaxed text-gray-800">{sec.content}</p>
+              )}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
 function FullPreviewTab({ page }: { page: PublishReadyPage }) {
-  const { body } = page.blocks;
+  const { body, head } = page.blocks;
+  const [preview, setPreview] = useState<PolishedArticlePreview | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const previewKey = useMemo(
+    () =>
+      JSON.stringify({
+        h1: body.h1,
+        markdown: body.full_body_markdown,
+        title: head.title_tag,
+      }),
+    [body.h1, body.full_body_markdown, head.title_tag],
+  );
+
+  const fetchPreview = async () => {
+    if (!body.full_body_markdown.trim()) {
+      setPreview(null);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const data = await api.post<PolishedArticlePreview>("/reports/preview-article", {
+        h1: body.h1,
+        title_tag: head.title_tag,
+        meta_description: head.meta_description,
+        full_body_markdown: body.full_body_markdown,
+        full_url: page.full_url,
+        word_count: body.word_count,
+      });
+      setPreview(data);
+    } catch (err) {
+      setError(formatApiError(err, "Could not generate article preview."));
+      setPreview(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchPreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewKey]);
+
+  const displayTitle = preview?.display_title || body.h1;
+  const displaySubtitle = preview?.display_subtitle || head.meta_description;
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          Rendered preview of the complete article body
+          AI-polished preview of the complete article body
         </p>
-        <span className="font-mono text-[11px] text-muted-foreground">
-          {body.word_count.toLocaleString()} words
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-[11px] text-muted-foreground">
+            {body.word_count.toLocaleString()} words
+          </span>
+          <button
+            type="button"
+            onClick={() => void fetchPreview()}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-surface/80 px-2.5 py-1 text-xs font-medium text-muted hover:text-primary"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+            Refresh preview
+          </button>
+        </div>
       </div>
-      <div className="rounded-2xl border border-border/60 bg-white p-6 space-y-3">
-        <h1 className="text-2xl font-bold">{body.h1}</h1>
-        <pre className="whitespace-pre-wrap text-sm font-sans leading-relaxed text-foreground">
-          {body.full_body_markdown || "No article content extracted yet."}
-        </pre>
-      </div>
+
+      {loading && !preview && body.full_body_markdown.trim() && (
+        <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <Sparkles className="h-5 w-5 animate-pulse text-primary" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Formatting your article preview…</p>
+              <p className="text-xs text-muted">
+                OpenAI is cleaning layout only — your article content stays the same.
+              </p>
+            </div>
+          </div>
+          <div className="h-48 animate-pulse rounded-xl bg-white/60" />
+        </div>
+      )}
+
+      {!loading && error && (
+        <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+          {error} Showing basic preview instead.
+        </p>
+      )}
+
+      {(!loading || preview) && (
+        <div className="rounded-2xl border border-border/60 bg-white p-6 shadow-sm">
+          {displayTitle && (
+            <h1 className="mb-2 text-2xl font-bold text-gray-900">{displayTitle}</h1>
+          )}
+          {displaySubtitle && (
+            <p className="mb-5 text-sm leading-relaxed text-gray-600">{displaySubtitle}</p>
+          )}
+          {preview ? (
+            <PolishedArticlePreviewView preview={preview} />
+          ) : (
+            <ArticlePreviewFallback markdown={body.full_body_markdown} />
+          )}
+          {preview?.preview_model && (
+            <p className="mt-6 text-center text-[10px] text-gray-500">
+              Preview formatted with {preview.preview_model} · content unchanged
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -580,6 +758,9 @@ export function PublishReadyPageView({ page }: { page: PublishReadyPage }) {
 
       {/* Tabs */}
       <CardContent className="p-0">
+        <div className="px-4 pt-4">
+          <AiSetupBanner mode="presentation" />
+        </div>
         <Tabs defaultValue="preview" className="w-full">
           <TabsList className="w-full rounded-none border-b border-border/60 bg-muted/30 h-auto p-0 justify-start overflow-x-auto">
             {[

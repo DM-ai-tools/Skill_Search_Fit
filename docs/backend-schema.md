@@ -468,6 +468,70 @@ CREATE INDEX idx_executions_started_at ON executions (started_at DESC);
 
 ---
 
+### 4.10 `pipeline_runs`
+
+Orchestrated multi-step pipeline runs with competitor pre-analysis, inter-skill review pauses, and 24-hour session expiry. Used by `POST /api/v1/pipelines/{id}/runs` (not the legacy per-step `execute-step` path).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK | Run ID |
+| `pipeline_id` | `TEXT` | NOT NULL | Pipeline slug (e.g. `full-content-page-pipeline`) |
+| `project_id` | `UUID` | NOT NULL, FK → `projects(id)` ON DELETE CASCADE | Project context |
+| `user_id` | `UUID` | NOT NULL, FK → `users(id)` ON DELETE CASCADE | Owner |
+| `status` | `TEXT` | NOT NULL | `analyzing_competitors`, `running`, `paused_for_review`, `completed`, `failed`, `expired` |
+| `current_skill_index` | `INTEGER` | NOT NULL, DEFAULT `0` | Last completed or in-flight step (1-based when running) |
+| `base_inputs` | `JSONB` | NOT NULL | Enriched form inputs at run start |
+| `competitor_data` | `JSONB` | NOT NULL | Pre-run competitor intelligence payload |
+| `competitor_failed` | `BOOLEAN` | NOT NULL | True if competitor pre-analysis failed (run continues) |
+| `prior_markdown` | `JSONB` | NOT NULL | Cumulative step markdown for downstream skills |
+| `step_results` | `JSONB` | NOT NULL | Serialized `PipelineStepResult` objects |
+| `pending_inputs` | `JSONB` | NULL | Inter-skill review payload when `paused_for_review` |
+| `edited_inputs_count` | `INTEGER` | NOT NULL | User edits across review pauses |
+| `error_message` | `TEXT` | NULL | Failure reason when `status = failed` |
+| `expires_at` | `TIMESTAMPTZ` | NOT NULL | Default `NOW() + 24 hours` |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL | Row creation |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL | Last state change |
+
+```sql
+-- See backend/migrations/010_pipeline_runs.sql and 012_pipeline_runs_error_message.sql
+```
+
+**Retention:** runs expire after 24 hours; expired rows raise a validation error on access and are marked `expired`.
+
+---
+
+### 4.11 `pipeline_page_generations`
+
+Template-insertion page generation jobs for the Full Content Page Pipeline. One row per `pipeline_run_id`; triggered automatically when a run completes (fire-and-forget background task).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `UUID` | PK | Generation job ID |
+| `pipeline_run_id` | `UUID` | NOT NULL, UNIQUE, FK → `pipeline_runs(id)` | Parent run |
+| `project_id` | `UUID` | NOT NULL, FK → `projects(id)` | Project |
+| `user_id` | `UUID` | NOT NULL, FK → `users(id)` | Owner |
+| `status` | `TEXT` | NOT NULL | `generating`, `ready`, `approved`, `deployed`, `failed` |
+| `regeneration_count` | `INTEGER` | NOT NULL | User regeneration attempts (max 3) |
+| `user_feedback` | `TEXT` | NULL | Regeneration feedback |
+| `job_data` | `JSONB` | NOT NULL | Template capture + assembler metadata |
+| `result_html` | `TEXT` | NULL | Generated page HTML |
+| `page_title` | `TEXT` | NULL | SEO title |
+| `meta_description` | `TEXT` | NULL | Meta description |
+| `slug` | `TEXT` | NULL | URL slug |
+| `full_url` | `TEXT` | NULL | Canonical URL |
+| `approved_at` | `TIMESTAMPTZ` | NULL | User approval timestamp |
+| `deployed_at` | `TIMESTAMPTZ` | NULL | WordPress deploy timestamp |
+| `wordpress_draft_url` | `TEXT` | NULL | Draft link after deploy |
+| `error_message` | `TEXT` | NULL | Failure reason |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL | Row creation |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL | Last state change |
+
+```sql
+-- See backend/migrations/011_pipeline_page_generations.sql
+```
+
+---
+
 ## 5. Triggers
 
 ### 5.1 Auto-update `updated_at`
@@ -747,36 +811,28 @@ All six queries can run in parallel (e.g., via `asyncio.gather` with separate po
 
 ## 8. Migration Order
 
-**v2 reorders the sequence** so `executions` exists before `outputs` (which now references it), and adds new files for the additive columns.
+**Authoritative migration files** live in `backend/migrations/`. Run with `npm run migrate` or `python backend/scripts/migrate.py`. Production Docker entrypoint and local `start-api.ps1` run migrations before API start.
 
 | File | Contents |
 |------|----------|
-| `001_extensions.sql` | pgcrypto, citext |
-| `002_types.sql` | ENUM types |
-| `003_users.sql` | users table (incl. `idx_users_created_at`) |
-| `004_sessions.sql` | sessions table (incl. `csrf_token`) |
-| `005_projects.sql` | projects table (incl. `idx_projects_created_at`) |
-| `006_plugins.sql` | plugins table (incl. `schema_version`) |
-| `007_prompts.sql` | prompts table |
-| `008_executions.sql` | **executions table — moved before outputs** (incl. `schema_version`, `idx_executions_started_at`) |
-| `009_outputs.sql` | outputs table — **now references `executions(id)`** (incl. `execution_id`, `schema_version`) |
-| `010_workspace_sessions.sql` | workspace_sessions table (incl. `schema_version`) |
-| `011_activity_logs.sql` | activity_logs table |
-| `012_triggers.sql` | updated_at triggers |
-| `013_seed_dev.sql` | dev plugins + admin (env-driven, incl. `schema_version = 1`) |
+| `001_initial_schema.sql` | Core tables (users, sessions, projects, plugins, executions, outputs, workspace_sessions, activity_logs) |
+| `002_seed_dev.sql` | Dev seed data |
+| `003_website_analysis.sql` | Website analysis cache |
+| `004_report_review.sql` | Report review / change suggestions foundation |
+| `005_rename_report_review_to_change_suggestions.sql` | Rename to change_suggestions |
+| `006_integrations.sql` | CMS integrations tables |
+| `007_change_suggestion_quality.sql` | Quality columns on suggestion changes |
+| `008_plugin_slug_on_suggestions.sql` | `plugin_slug` on change_suggestions |
+| `009_remove_mailchimp.sql` | Remove Mailchimp from destination enums |
+| `010_pipeline_runs.sql` | `pipeline_runs` orchestration table |
+| `011_pipeline_page_generations.sql` | Full-content page generation jobs |
+| `012_pipeline_runs_error_message.sql` | `error_message` on pipeline runs |
 
-**For projects with an existing v1 database** (pre-launch dev environments only — no production data exists yet per project status), apply as incremental migrations instead:
+> **Note:** Earlier doc versions listed a decomposed v2 file sequence (`001_extensions.sql`, etc.). The running application uses the consolidated files above.
 
-```
-014_add_csrf_token_to_sessions.sql
-015_add_schema_version_to_plugins.sql
-016_create_executions_if_not_exists.sql
-017_add_execution_id_and_schema_version_to_outputs.sql   -- backfill schema_version=1 before NOT NULL
-018_add_schema_version_to_workspace_sessions.sql
-019_add_dashboard_indexes.sql                             -- idx_users_created_at, idx_projects_created_at, idx_executions_started_at
-```
+**For projects with an existing v1 database** (pre-launch dev only), apply additive migrations incrementally; no production data exists yet per project status.
 
-This keeps the change additive and reversible for any environment that already ran the v1 migrations.
+Run with `npm run migrate` or `python backend/scripts/migrate.py`. Production entrypoint (`backend/scripts/entrypoint.sh`) runs migrations before API start; local `npm run dev:api` does the same via `start-api.ps1`.
 
 ---
 
@@ -789,6 +845,8 @@ This keeps the change additive and reversible for any environment that already r
 | Soft-deleted projects | Retain 30 days; cascade outputs |
 | Activity logs | Retain indefinitely (MVP); archive later |
 | **Executions** | Retain 30 days, then hard delete |
+| **Pipeline runs** | Expire after 24 hours (`expires_at`); marked `expired` on access |
+| **Pipeline page generations** | Cascade delete with parent `pipeline_runs` row |
 
 **v2 clarification:** because `outputs.execution_id` is `ON DELETE SET NULL`, pruning `executions` after 30 days does **not** delete or break any saved `outputs` row — the output's own `input_snapshot`, `schema_version`, and `generated_output` remain fully self-contained. The `execution_id` link is a "for as long as it's useful" convenience reference, not a hard dependency.
 
@@ -834,3 +892,4 @@ All changes are **additive** (new columns with defaults, new table promoted from
 | 1.0 | 2026-06-11 | Initial schema document |
 | 2.0 | 2026-06-11 | Added CSRF token storage, schema versioning across plugins/outputs/workspace_sessions, promoted executions to mandatory with execution_id linkage, added dashboard-supporting indexes and queries |
 | 2.1 | 2026-06-11 | Documented JSON plugin seed (`seed_plugins.py`), 12-plugin catalog, legacy plugin disable on re-seed |
+| 2.2 | 2026-06-23 | Added `pipeline_runs` and `pipeline_page_generations` tables; `error_message` on pipeline runs; application migration list |

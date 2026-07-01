@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { FileText, Puzzle, UserPlus } from "lucide-react";
+import { FileText, Puzzle, UserPlus, AlertCircle, RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
+import { formatApiError } from "@/lib/format-api-error";
 import type { AdminDashboardStats, ActivityLog } from "@/lib/types";
 import { BentoGrid, BentoSectionHeader, BentoStatTile, BentoTile } from "@/components/bento";
 import { Button } from "@/components/ui/button";
@@ -15,13 +16,52 @@ function fmtDate(d: string) {
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<AdminDashboardStats | null>(null);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [statsData, logsData] = await Promise.all([
+        api.get<AdminDashboardStats>("/admin/dashboard"),
+        api.get<ActivityLog[]>("/admin/logs?limit=20"),
+      ]);
+      setStats(statsData);
+      setLogs(logsData);
+    } catch (err) {
+      setStats(null);
+      setLogs([]);
+      setError(formatApiError(err, "Failed to load admin dashboard"));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    api.get<AdminDashboardStats>("/admin/dashboard").then(setStats);
-    api.get<ActivityLog[]>("/admin/logs?limit=20").then(setLogs);
+    load();
   }, []);
 
-  if (!stats) return <p className="text-muted">Loading stats...</p>;
+  if (loading && !stats) {
+    return <p className="text-muted">Loading stats...</p>;
+  }
+
+  if (error && !stats) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4" />
+          <span>{error}</span>
+        </div>
+        <Button variant="outline" size="sm" className="gap-2" onClick={load} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  if (!stats) return null;
 
   return (
     <div className="space-y-8">

@@ -99,16 +99,11 @@ def upsert_plugin(conn, definition: dict) -> None:
     print(f"  Prompts synced: {', '.join(prompts.keys())}")
 
 
-from app.config import normalize_database_url
+from app.config import settings
 
 
 def main() -> None:
-    database_url = normalize_database_url(
-        os.environ.get(
-            "DATABASE_URL",
-            "postgresql://skillsearchfit:root@localhost:5432/skillsearchfit",
-        )
-    )
+    database_url = settings.database_url
 
     files = sorted(PLUGINS_DIR.glob("*.json"))
     if not files:

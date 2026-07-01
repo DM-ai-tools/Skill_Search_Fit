@@ -16,6 +16,8 @@ frontend/.env.local
 
 # Build
 frontend/.next/
+frontend/playwright-report/
+frontend/test-results/
 dist/
 *.egg-info/
 
@@ -31,3 +33,10 @@ Thumbs.db
 # Python
 .pytest_cache/
 .mypy_cache/
+.superpowers/
+**/__pycache__/
+*.cpython-*.pyc
+
+# Cursor / local assets
+.cursor/
+assets/

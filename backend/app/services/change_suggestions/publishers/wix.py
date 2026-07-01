@@ -94,18 +94,37 @@ async def publish(
                 page_id = page["id"]
                 content = c.effective_content
                 label = c.field_label.lower()
+                change_type = (c.change_type or "").lower()
 
-                seo_data: dict = {}
-                if "title" in label:
-                    seo_data["title"] = content
-                elif "description" in label:
-                    seo_data["description"] = content
+                page_patch: dict = {}
+                if "title" in label or change_type == "title":
+                    page_patch = {"page": {"seo": {"title": content}, "title": content}}
+                elif "description" in label or "meta" in label:
+                    page_patch = {"page": {"seo": {"description": content}}}
+                elif any(k in label for k in ("body", "content", "html", "copy", "article", "paragraph")):
+                    page_patch = {
+                        "page": {
+                            "seo": {"description": content[:160]},
+                            "description": content,
+                        }
+                    }
                 else:
-                    seo_data["tags"] = [{"type": "property", "props": {"name": c.field_label, "content": content}}]
+                    page_patch = {
+                        "page": {
+                            "seo": {
+                                "tags": [
+                                    {
+                                        "type": "property",
+                                        "props": {"name": c.field_label, "content": content},
+                                    }
+                                ]
+                            }
+                        }
+                    }
 
                 update_resp = await client.patch(
                     f"{_BASE}/pages/{page_id}",
-                    json={"page": {"seo": seo_data}},
+                    json=page_patch,
                 )
                 update_resp.raise_for_status()
 

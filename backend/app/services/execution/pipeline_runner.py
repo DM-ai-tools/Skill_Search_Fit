@@ -1,8 +1,13 @@
+import copy
+import json
+
 import asyncpg
 
 from app.data.pipelines import build_step_inputs, get_pipeline
 from app.exceptions import not_found
+from app.services.execution.pipeline_input_autofill import autofill_pipeline_step_inputs
 from app.services.execution.runner import run_plugin
+from app.services.execution.pipeline_competitor_analysis import competitor_context_block
 from app.services.website_analysis.intelligence import enrich_inputs_from_cache
 
 # Max characters of prior step output passed as context to each subsequent step.
@@ -30,6 +35,9 @@ async def _run_pipeline_step(
     prior_markdown: list[str],
     user_id,
     ip_address: str | None = None,
+    competitor_data: dict | None = None,
+    step_input_overrides: dict | None = None,
+    replace_step_inputs: bool = False,
 ) -> dict:
     steps = pipeline["steps"]
     if step_index < 1 or step_index > len(steps):
@@ -43,7 +51,8 @@ async def _run_pipeline_step(
     async with pool.acquire() as conn:
         plugin = await conn.fetchrow(
             """
-            SELECT id, schema_version FROM plugins
+            SELECT id, schema_version, input_fields, category, description, plugin_name
+            FROM plugins
             WHERE plugin_name = $1 AND status = 'enabled'
             """,
             plugin_name,
@@ -52,8 +61,35 @@ async def _run_pipeline_step(
         raise not_found(f"Plugin not enabled: {plugin_name}")
 
     label = step_def["label"]
-    step_inputs = build_step_inputs(plugin_name, enriched_inputs, prior_markdown)
+    if step_input_overrides:
+        step_inputs = copy.deepcopy(step_input_overrides)
+    else:
+        step_inputs = build_step_inputs(plugin_name, enriched_inputs, prior_markdown)
+    input_fields = (
+        json.loads(plugin["input_fields"])
+        if isinstance(plugin["input_fields"], str)
+        else plugin["input_fields"]
+    )
+    step_inputs = await autofill_pipeline_step_inputs(
+        input_fields=input_fields,
+        step_inputs=step_inputs,
+        enriched_base=enriched_inputs,
+        prior_markdown=prior_markdown,
+        plugin_name=plugin_name,
+        plugin_category=plugin.get("category") or "",
+        plugin_description=plugin.get("description") or "",
+    )
+    if step_input_overrides:
+        # Reviewed values always win after autofill fills any remaining gaps.
+        step_inputs = {**step_inputs, **step_input_overrides}
     pipeline_context = _pipeline_context(prior_markdown, step_index)
+    competitor_block = competitor_context_block(competitor_data or {})
+    if competitor_block:
+        pipeline_context = (
+            f"{competitor_block}\n\n---\n\n{pipeline_context}"
+            if pipeline_context
+            else competitor_block
+        )
 
     result = await run_plugin(
         pool,
@@ -91,6 +127,52 @@ async def get_pipeline_recent_results(
     pipeline = get_pipeline(pipeline_id)
     if not pipeline:
         raise not_found("Pipeline not found")
+
+    step_count = len(pipeline["steps"])
+
+    async with pool.acquire() as conn:
+        run_row = await conn.fetchrow(
+            """
+            SELECT id, step_results, status
+            FROM pipeline_runs
+            WHERE pipeline_id = $1
+              AND project_id = $2
+              AND user_id = $3
+              AND status IN ('completed', 'paused_for_review')
+              AND jsonb_array_length(step_results) >= $4
+            ORDER BY updated_at DESC
+            LIMIT 1
+            """,
+            pipeline_id,
+            project_id,
+            user_id,
+            step_count,
+        )
+
+    if run_row:
+        step_results = run_row["step_results"]
+        if isinstance(step_results, str):
+            import json
+
+            step_results = json.loads(step_results)
+        if isinstance(step_results, list) and len(step_results) >= step_count:
+            prior_markdown = [
+                f"### Step {s['step']}: {s['label']}\n\n{s.get('output_markdown', '')}"
+                for s in step_results[:step_count]
+            ]
+            combined = f"# {pipeline['name']}\n\n" + "\n\n".join(prior_markdown)
+            return {
+                "pipeline_id": pipeline_id,
+                "pipeline_name": pipeline["name"],
+                "pipeline_run_id": str(run_row["id"]),
+                "status": "completed" if run_row["status"] == "completed" else run_row["status"],
+                "steps": step_results[:step_count],
+                "combined_markdown": combined,
+                "workflow_steps": [
+                    {"step": s["step"], "label": s["label"], "status": "done"}
+                    for s in step_results[:step_count]
+                ],
+            }
 
     plugin_names = [s["plugin_name"] for s in pipeline["steps"]]
     async with pool.acquire() as conn:
@@ -178,6 +260,9 @@ async def run_pipeline_step(
     prior_markdown: list[str],
     user_id,
     ip_address: str | None = None,
+    competitor_data: dict | None = None,
+    step_input_overrides: dict | None = None,
+    replace_step_inputs: bool = False,
 ) -> dict:
     pipeline = get_pipeline(pipeline_id)
     if not pipeline:
@@ -195,6 +280,9 @@ async def run_pipeline_step(
         prior_markdown=prior_markdown,
         user_id=user_id,
         ip_address=ip_address,
+        competitor_data=competitor_data,
+        step_input_overrides=step_input_overrides,
+        replace_step_inputs=replace_step_inputs,
     )
 
 

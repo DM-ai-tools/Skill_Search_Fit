@@ -60,6 +60,8 @@ async def enrich_inputs_from_cache(
         "seed_keywords": ", ".join(analysis.get("seo_keywords", [])[:8]),
         "competitors": competitor_urls,
         "competitor_urls": competitor_urls,
+        "publishing_cadence": "growth",
+        "planning_horizon": "8",
     }
 
     for key, value in mapping.items():

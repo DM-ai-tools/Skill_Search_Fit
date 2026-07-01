@@ -1,38 +1,18 @@
-import time
-from collections import defaultdict
-from threading import Lock
+import logging
 
 from fastapi import Request
 from starlette.responses import JSONResponse
 
+from app.cache.rate_limit_store import rate_limit_check
 from app.config import settings
 
-
-class RateLimiter:
-    """In-memory rate limiter for MVP (per IP, per endpoint key)."""
-
-    def __init__(self) -> None:
-        self._hits: dict[str, list[float]] = defaultdict(list)
-        self._lock = Lock()
-
-    def check(self, key: str, limit: int, window: int) -> int | None:
-        """Return retry_after seconds if rate-limited, else None."""
-        now = time.time()
-        with self._lock:
-            hits = [t for t in self._hits[key] if now - t < window]
-            if len(hits) >= limit:
-                return int(window - (now - hits[0])) + 1
-            hits.append(now)
-            self._hits[key] = hits
-            return None
-
-
-rate_limiter = RateLimiter()
+logger = logging.getLogger(__name__)
 
 PUBLIC_AUTH_PATHS = {
     "/api/v1/auth/login",
     "/api/v1/auth/admin/login",
     "/api/v1/auth/signup",
+    "/api/v1/contact",
 }
 
 
@@ -48,18 +28,32 @@ def get_client_ip(request: Request) -> str | None:
 async def rate_limit_middleware(request: Request, call_next):
     path = request.url.path
     if request.method == "POST" and path in PUBLIC_AUTH_PATHS:
-        ip = get_client_ip(request)
+        ip = get_client_ip(request) or "unknown"
         retry_after: int | None = None
         if path == "/api/v1/auth/login":
-            retry_after = rate_limiter.check(f"login:{ip}", settings.rate_limit_login, settings.rate_limit_window_seconds)
+            retry_after = await rate_limit_check(
+                f"login:{ip}",
+                settings.rate_limit_login,
+                settings.rate_limit_window_seconds,
+            )
         elif path == "/api/v1/auth/admin/login":
-            retry_after = rate_limiter.check(
+            retry_after = await rate_limit_check(
                 f"admin_login:{ip}",
                 settings.rate_limit_admin_login,
                 settings.rate_limit_window_seconds,
             )
         elif path == "/api/v1/auth/signup":
-            retry_after = rate_limiter.check(f"signup:{ip}", settings.rate_limit_signup, settings.rate_limit_window_seconds)
+            retry_after = await rate_limit_check(
+                f"signup:{ip}",
+                settings.rate_limit_signup,
+                settings.rate_limit_window_seconds,
+            )
+        elif path == "/api/v1/contact":
+            retry_after = await rate_limit_check(
+                f"contact:{ip}",
+                settings.rate_limit_contact,
+                settings.rate_limit_window_seconds,
+            )
 
         if retry_after is not None:
             return JSONResponse(

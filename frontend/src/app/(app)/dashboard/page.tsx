@@ -8,8 +8,12 @@ import {
   BarChart3, Play, CheckCircle2, AlertCircle, Circle,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { STATIC_PIPELINES, executePipelineSteps } from "@/lib/pipelines";
-import type { Plugin, Project, Pipeline } from "@/lib/types";
+import { STATIC_PIPELINES, fetchPipelines } from "@/lib/pipelines";
+import { seoIntelligenceApi } from "@/lib/seo-intelligence-api";
+import { runPipelineWithReview } from "@/lib/pipeline-run-orchestrator";
+import { usePipelineReviewGate } from "@/hooks/use-pipeline-review-gate";
+import type { Plugin, Project, Pipeline, SeoProjectTrendsResponse } from "@/lib/types";
+import { PipelineInputReview } from "@/components/pipelines/pipeline-input-review";
 import { BentoGrid, BentoSectionHeader } from "@/components/bento";
 import { useAuthStore } from "@/stores/auth-store";
 import { useProjectStore } from "@/stores/project-store";
@@ -21,8 +25,10 @@ import { PipelineDetailDialog } from "@/components/pipelines/pipeline-detail-dia
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { LoadErrorBanner } from "@/components/ui/load-error-banner";
 import { normalizePluginList } from "@/lib/plugin-catalog";
+import { formatApiError } from "@/lib/format-api-error";
+import { cn } from "@/lib/utils";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -232,19 +238,30 @@ function RunAuditModal({
   onClose,
   siteUrl: initialSiteUrl,
   projectId,
+  pipelines,
 }: {
   open: boolean;
   onClose: () => void;
   siteUrl?: string;
   projectId?: string;
+  pipelines: Pipeline[];
 }) {
-  const pipelines = STATIC_PIPELINES.slice(0, 3);
   const [url, setUrl] = useState(initialSiteUrl || "");
   const [urlError, setUrlError] = useState("");
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(false);
   const [statuses, setStatuses] = useState<Record<string, AuditStatus>>({});
   const [lastSiteUrl, setLastSiteUrl] = useState("");
+  const [activePipelineName, setActivePipelineName] = useState("");
+  const {
+    pendingReview,
+    reviewRun,
+    continuingReview,
+    waitForReview,
+    handleReviewContinue,
+    handleReviewSkip,
+    clearReview,
+  } = usePipelineReviewGate();
   const abortRef = useRef(false);
 
   useEffect(() => {
@@ -255,9 +272,11 @@ function RunAuditModal({
       setDone(false);
       setStatuses({});
       setLastSiteUrl("");
+      setActivePipelineName("");
+      clearReview();
       abortRef.current = false;
     }
-  }, [open, initialSiteUrl]);
+  }, [open, initialSiteUrl, clearReview]);
 
   const setStatus = (id: string, s: AuditStatus) =>
     setStatuses((prev) => ({ ...prev, [id]: s }));
@@ -276,21 +295,32 @@ function RunAuditModal({
     setRunning(true);
     setDone(false);
     setLastSiteUrl(normalized);
+    clearReview();
     const initial: Record<string, AuditStatus> = {};
     pipelines.forEach((p) => { initial[p.id] = "idle"; });
     setStatuses(initial);
 
     for (const pipeline of pipelines) {
       if (abortRef.current) break;
+      setActivePipelineName(pipeline.name);
       setStatus(pipeline.id, "running");
       try {
-        await executePipelineSteps(pipeline.id, projectId, inputs);
+        await runPipelineWithReview({
+          pipelineId: pipeline.id,
+          projectId,
+          inputs,
+          aborted: () => abortRef.current,
+          onRunUpdate: () => undefined,
+          waitForReview,
+        });
         setStatus(pipeline.id, "done");
       } catch {
         setStatus(pipeline.id, "error");
       }
     }
 
+    setActivePipelineName("");
+    clearReview();
     setRunning(false);
     setDone(true);
   };
@@ -330,7 +360,7 @@ function RunAuditModal({
         <div className="relative mb-6">
           <h2 className="text-xl font-bold text-foreground">Run Audit</h2>
           <p className="mt-1 text-sm text-muted">
-            Runs all 3 pipeline workflows sequentially — each builds on the prior output.
+            Runs all 3 pipeline workflows sequentially with review gates between each step.
           </p>
         </div>
 
@@ -354,6 +384,25 @@ function RunAuditModal({
               <p className="mt-1 text-xs text-warning">Select a project first to save pipeline outputs.</p>
             )}
           </div>
+
+          {running && activePipelineName && !pendingReview && (
+            <p className="text-xs text-muted">
+              Running <span className="font-medium text-foreground">{activePipelineName}</span>
+              …
+            </p>
+          )}
+
+          {pendingReview && (
+            <PipelineInputReview
+              compact
+              pending={pendingReview}
+              runId={reviewRun?.id}
+              competitorData={reviewRun?.competitor_data ?? {}}
+              continuing={continuingReview}
+              onContinue={handleReviewContinue}
+              onSkip={handleReviewSkip}
+            />
+          )}
 
           {/* Pipeline status rows */}
           <div className="space-y-2 rounded-2xl border border-border/40 bg-surface/40 p-3">
@@ -395,7 +444,7 @@ function RunAuditModal({
 
           <button
             onClick={handleRun}
-            disabled={running || !projectId}
+            disabled={running || !projectId || Boolean(pendingReview)}
             className="dash-glass-btn relative flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-primary disabled:opacity-60"
           >
             {running ? (
@@ -425,12 +474,17 @@ function RunAuditModal({
 
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
-  const { projects, activeProjectId } = useProjectStore();
+  const { projects, activeProjectId, error: projectsError, fetchProjects, clearError } = useProjectStore();
   const { siteUrl, hydrated } = useSiteStore();
   const { analysis } = useAnalysisStore();
 
   const [plugins, setPlugins] = useState<Plugin[]>([]);
+  const [pluginsError, setPluginsError] = useState("");
+  const [pluginsRetrying, setPluginsRetrying] = useState(false);
   const [pipelines, setPipelines] = useState<Pipeline[]>(STATIC_PIPELINES);
+  const [seoTrends, setSeoTrends] = useState<SeoProjectTrendsResponse | null>(null);
+  const [seoTrendsLoading, setSeoTrendsLoading] = useState(false);
+  const [pipelinesLoadError, setPipelinesLoadError] = useState("");
   const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [runAuditOpen, setRunAuditOpen] = useState(false);
@@ -439,13 +493,37 @@ export default function DashboardPage() {
   const score = quickAudit?.overall_score ?? null;
   const savedOutputs = projects.reduce((sum, p) => sum + (p.output_count || 0), 0);
 
+  const loadPlugins = () => {
+    setPluginsError("");
+    return api
+      .get<Plugin[]>("/plugins")
+      .then((data) => setPlugins(normalizePluginList(data)))
+      .catch((err) => {
+        setPlugins([]);
+        setPluginsError(formatApiError(err, "Failed to load plugins"));
+      });
+  };
+
   useEffect(() => {
-    api.get<Plugin[]>("/plugins").then((data) => setPlugins(normalizePluginList(data))).catch(() => setPlugins([]));
-    api
-      .get<Pipeline[]>("/pipelines")
-      .then((data) => setPipelines(data.length > 0 ? data : STATIC_PIPELINES))
-      .catch(() => setPipelines(STATIC_PIPELINES));
+    loadPlugins();
+    fetchPipelines().then(({ pipelines: list, error }) => {
+      setPipelines(list);
+      setPipelinesLoadError(error ?? "");
+    });
   }, []);
+
+  useEffect(() => {
+    if (!activeProjectId) {
+      setSeoTrends(null);
+      return;
+    }
+    setSeoTrendsLoading(true);
+    seoIntelligenceApi
+      .getProjectTrends(activeProjectId, 30)
+      .then(setSeoTrends)
+      .catch(() => setSeoTrends(null))
+      .finally(() => setSeoTrendsLoading(false));
+  }, [activeProjectId]);
 
   const firstName = user?.name?.split(" ")[0] ?? "there";
 
@@ -464,6 +542,31 @@ export default function DashboardPage() {
       </div>
 
       <div className="space-y-5">
+        {projectsError && (
+          <LoadErrorBanner
+            message={projectsError}
+            onRetry={async () => {
+              clearError();
+              await fetchProjects();
+            }}
+          />
+        )}
+        {pluginsError && (
+          <LoadErrorBanner
+            message={pluginsError}
+            retrying={pluginsRetrying}
+            onRetry={async () => {
+              setPluginsRetrying(true);
+              await loadPlugins();
+              setPluginsRetrying(false);
+            }}
+          />
+        )}
+        {pipelinesLoadError && (
+          <div className="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
+            {pipelinesLoadError}
+          </div>
+        )}
         {hydrated && !siteUrl && (
           <div className="dash-enter">
             <button
@@ -571,6 +674,41 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        <section className="dash-enter rounded-2xl border border-border/40 bg-surface/20 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground">SEO trend intelligence (30d)</h2>
+            {seoTrendsLoading && <span className="text-xs text-muted">Loading…</span>}
+          </div>
+          {!activeProjectId ? (
+            <p className="text-sm text-muted">Select a project to view keyword trend intelligence.</p>
+          ) : !seoTrends || seoTrends.keywords_tracked === 0 ? (
+            <p className="text-sm text-muted">
+              No trend data yet. Ingest keyword snapshots via `/seo-intelligence/keywords/snapshots`.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <div className="rounded-xl border border-border/40 bg-background/50 px-3 py-2">
+                <p className="text-xs text-muted">Tracked keywords</p>
+                <p className="text-xl font-semibold text-foreground">{seoTrends.keywords_tracked}</p>
+              </div>
+              <div className="rounded-xl border border-border/40 bg-background/50 px-3 py-2">
+                <p className="text-xs text-muted">Improved</p>
+                <p className="text-xl font-semibold text-success">{seoTrends.improved_keywords}</p>
+              </div>
+              <div className="rounded-xl border border-border/40 bg-background/50 px-3 py-2">
+                <p className="text-xs text-muted">Declined</p>
+                <p className="text-xl font-semibold text-destructive">{seoTrends.declined_keywords}</p>
+              </div>
+              <div className="rounded-xl border border-border/40 bg-background/50 px-3 py-2">
+                <p className="text-xs text-muted">Top 10 / Top 3</p>
+                <p className="text-xl font-semibold text-foreground">
+                  {seoTrends.top10_keywords} / {seoTrends.top3_keywords}
+                </p>
+              </div>
+            </div>
+          )}
+        </section>
+
         {/* ══ 5. Pipeline highlights ════════════════════════════════════════ */}
         <section className="dash-enter dash-enter-d3">
           <BentoSectionHeader
@@ -593,7 +731,7 @@ export default function DashboardPage() {
             className="mb-4"
           />
           <BentoGrid columns={3}>
-            {pipelines.slice(0, 3).map((pipeline) => (
+            {pipelines.slice(0, 4).map((pipeline) => (
               <PipelineCard
                 key={pipeline.id}
                 pipeline={pipeline}
@@ -671,6 +809,7 @@ export default function DashboardPage() {
         onClose={() => setRunAuditOpen(false)}
         siteUrl={siteUrl ?? undefined}
         projectId={activeProjectId ?? undefined}
+        pipelines={pipelines}
       />
     </>
   );

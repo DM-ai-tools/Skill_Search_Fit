@@ -69,7 +69,136 @@ def _extract_h1(markdown: str) -> str:
     """Extract first H1 from markdown."""
     m = re.search(r"^#\s+(.+)$", markdown, re.MULTILINE)
     if m:
-        return m.group(1).strip()
+        title = m.group(1).strip()
+        if not _is_report_title(title):
+            return title
+    return ""
+
+
+_REPORT_TITLE = re.compile(
+    r"(?:on[- ]page\s+seo|internal\s+linking|linking\s+report|seo\s+report|"
+    r"content\s+strategy|topic\s+research|audit\s+report|strategy\s+report)",
+    re.IGNORECASE,
+)
+
+_TRAILING_SECTION = re.compile(
+    r"^#{1,3}\s+(?:SEO Metadata|Schema Markup|Image Suggestions|Schema|JSON-LD|"
+    r"Metadata Summary|Checklist|Inbound Links|Outbound Links|Link Recommendations)\b",
+    re.MULTILINE | re.IGNORECASE,
+)
+
+_EMBEDDED_ARTICLE = re.compile(
+    r"(?im)^#{1,3}\s+(?:optimized\s+(?:article|content)|full\s+article|article\s+body|"
+    r"rewritten\s+content|updated\s+article|content\s+with\s+links)[^\n]*\n(.*)$",
+    re.DOTALL,
+)
+
+
+def _is_report_title(title: str) -> bool:
+    return bool(_REPORT_TITLE.search(title))
+
+
+def _strip_yaml_frontmatter(markdown: str) -> str:
+    trimmed = markdown.strip()
+    if not trimmed.startswith("---"):
+        return markdown
+    end = trimmed.find("\n---", 3)
+    if end == -1:
+        return markdown
+    return trimmed[end + 4 :].lstrip()
+
+
+def _trim_trailing_sections(body: str) -> str:
+    match = _TRAILING_SECTION.search(body)
+    if match:
+        body = body[: match.start()]
+    return body.strip()
+
+
+def _strip_leading_metadata_lines(body: str) -> str:
+    lines = body.splitlines()
+    cleaned: list[str] = []
+    started = False
+    for line in lines:
+        stripped = line.strip()
+        if not started:
+            if re.match(
+                r"^\*{0,2}(?:title\s*tag|meta\s*description|url\s*slug|canonical)\*{0,2}\s*:",
+                stripped,
+                re.IGNORECASE,
+            ):
+                continue
+            if stripped.startswith("**") and stripped.endswith("**") and ":" not in stripped:
+                continue
+            if not stripped:
+                continue
+            started = True
+        cleaned.append(line)
+    return "\n".join(cleaned).strip()
+
+
+def _extract_article_from_output(markdown: str) -> str:
+    """Pull publishable article prose from a single plugin output."""
+    if not markdown or not markdown.strip():
+        return ""
+
+    md = _strip_yaml_frontmatter(markdown)
+
+    embedded = _EMBEDDED_ARTICLE.search(md)
+    if embedded:
+        candidate = _trim_trailing_sections(_strip_leading_metadata_lines(embedded.group(1)))
+        if len(candidate.split()) >= 50:
+            return candidate
+
+    # Strategy / linking reports are not article bodies unless an embedded section matched.
+    if re.search(r"(?im)^#{1,2}\s+internal\s+linking\s+report", md):
+        return ""
+    if re.search(r"(?im)site\s+structure\s+map|issues\s+found|pages\s+analyzed", md):
+        if not re.search(r"(?im)^##\s+(?:introduction|conclusion|faq)\b", md):
+            return ""
+
+    # Drop leading SEO report banner when article content follows.
+    report_banner = re.search(
+        r"(?im)^#{1,2}\s+on[- ]page\s+seo\s+report[^\n]*\n+",
+        md,
+    )
+    if report_banner:
+        remainder = md[report_banner.end() :].lstrip()
+        if remainder:
+            md = remainder
+
+    # Prefer content from first real article heading.
+    for match in re.finditer(r"(?m)^(#+)\s+(.+)$", md):
+        level = len(match.group(1))
+        title = match.group(2).strip()
+        if level == 1 and _is_report_title(title):
+            continue
+        start = match.start()
+        body = _trim_trailing_sections(_strip_leading_metadata_lines(md[start:]))
+        if len(body.split()) >= 50:
+            return body
+
+    intro = re.search(
+        r"(?is)^##\s+(?:introduction|overview|article|body)\b[^\n]*\n(.*)$",
+        md,
+    )
+    if intro:
+        body = _trim_trailing_sections(_strip_leading_metadata_lines(intro.group(0)))
+        if len(body.split()) >= 50:
+            return body
+
+    fallback = _trim_trailing_sections(_strip_leading_metadata_lines(md))
+    if len(fallback.split()) >= 50 and not _is_report_title(fallback.splitlines()[0].lstrip("# ").strip()):
+        return fallback
+    return ""
+
+
+def _extract_article_body(*markdowns: str) -> str:
+    """Prefer create-content prose, then on-page optimized copy, then embedded linking article."""
+    for md in markdowns:
+        body = _extract_article_from_output(md)
+        if body:
+            return body
     return ""
 
 
@@ -372,12 +501,20 @@ async def assemble_publish_ready_page(
     # Extract fields — prefer on-page-seo (most optimised), fall back to content step
     title_tag = _extract_title_tag(onpage_md) or _extract_title_tag(content_md)
     meta_description = _extract_meta_description(onpage_md) or _extract_meta_description(content_md)
-    h1 = _extract_h1(onpage_md) or _extract_h1(content_md) or _extract_h1(linking_md)
+
+    # Body: article prose from content creation, then on-page optimized copy (not strategy reports)
+    article_body = _extract_article_body(content_md, onpage_md, linking_md)
+    if not article_body:
+        article_body = content_md or onpage_md or ""
+
+    h1 = (
+        _extract_h1(onpage_md)
+        or _extract_h1(content_md)
+        or _extract_h1(article_body)
+        or _extract_h1(linking_md)
+    )
     primary_kw = _extract_primary_keyword(cluster_md) or _extract_primary_keyword(brief_md)
     image_alts = _extract_image_alts(onpage_md) or _extract_image_alts(content_md)
-
-    # Body: prefer internal-linking (has links inserted) → on-page-seo → content
-    article_body = linking_md or onpage_md or content_md
 
     # Schema
     schema_jsonld, schema_valid = _extract_schema_json(onpage_md + "\n" + content_md)

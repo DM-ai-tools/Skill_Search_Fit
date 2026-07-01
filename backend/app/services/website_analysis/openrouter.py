@@ -110,13 +110,29 @@ async def openrouter_chat(
     timeout_seconds: int = 30,
     model: str | None = None,
 ) -> dict[str, Any]:
-    content = await _openrouter_request(
-        system=system,
-        user=user,
-        json_mode=json_mode,
-        timeout_seconds=timeout_seconds,
-        model=model,
-    )
+    try:
+        content = await _openrouter_request(
+            system=system,
+            user=user,
+            json_mode=json_mode,
+            timeout_seconds=timeout_seconds,
+            model=model,
+        )
+    except Exception as exc:
+        from app.services.llm.openai_client import openai_chat_json, openai_chat_text, openai_configured
+
+        if not openai_configured():
+            raise
+        logger.warning("OpenRouter unavailable (%s); falling back to OpenAI", exc)
+        if json_mode:
+            return await openai_chat_json(
+                system=system,
+                user=user,
+                timeout_seconds=timeout_seconds,
+            )
+        text, _ = await openai_chat_text(system=system, user=user)
+        return {"text": text}
+
     if json_mode:
         parsed = _parse_json_content(content)
         if not isinstance(parsed, dict):
@@ -133,13 +149,26 @@ async def openrouter_chat_array(
     model: str | None = None,
 ) -> list[Any]:
     """Request JSON array output (competitor discovery). Uses raw mode — no json_object constraint."""
-    content = await _openrouter_request(
-        system=system,
-        user=user,
-        json_mode=False,
-        timeout_seconds=timeout_seconds,
-        model=model,
-    )
+    try:
+        content = await _openrouter_request(
+            system=system,
+            user=user,
+            json_mode=False,
+            timeout_seconds=timeout_seconds,
+            model=model,
+        )
+    except Exception as exc:
+        from app.services.llm.openai_client import openai_chat_text, openai_configured
+
+        if not openai_configured():
+            raise
+        logger.warning("OpenRouter unavailable (%s); falling back to OpenAI for array response", exc)
+        text, _ = await openai_chat_text(
+            system=f"{system}\n\nRespond with a JSON array only.",
+            user=user,
+        )
+        content = text
+
     parsed = _parse_json_content(content)
     if isinstance(parsed, list):
         return parsed

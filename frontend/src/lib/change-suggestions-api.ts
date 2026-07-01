@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import type { components } from "@/lib/api-types.generated";
 
 // ── Types (mirror backend schemas) ────────────────────────────────────────────
 
@@ -16,6 +17,11 @@ export interface ChangeSuggestionResponse {
   created_at: string;
   updated_at: string;
 }
+
+export type ChangeSuggestionResponseFromOpenApi =
+  components["schemas"] extends { ChangeSuggestionResponse: infer T }
+    ? T
+    : ChangeSuggestionResponse;
 
 export interface ChangeResponse {
   id: string;

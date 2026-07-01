@@ -140,6 +140,7 @@ export function StructuredReportView({
   onDownloadPdf,
   onSave,
   saving,
+  pdfDownloading,
   saveMessage,
   error,
   sidebarExtra,
@@ -159,6 +160,7 @@ export function StructuredReportView({
   onDownloadPdf?: () => void;
   onSave?: () => void;
   saving?: boolean;
+  pdfDownloading?: boolean;
   saveMessage?: string;
   error?: string;
   sidebarExtra?: React.ReactNode;
@@ -197,9 +199,15 @@ export function StructuredReportView({
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {onDownloadPdf && (
-                  <Button type="button" variant="outline" className="gap-2" onClick={onDownloadPdf}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2"
+                    onClick={onDownloadPdf}
+                    disabled={pdfDownloading}
+                  >
                     <FileDown className="h-4 w-4" />
-                    Download PDF
+                    {pdfDownloading ? "Generating PDF…" : "Download PDF"}
                   </Button>
                 )}
                 {onSave && (

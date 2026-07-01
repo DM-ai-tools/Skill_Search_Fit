@@ -1,21 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, ApiError } from "@/lib/api";
 import { useProjectStore } from "@/stores/project-store";
 import { BentoGrid, BentoSectionHeader, BentoStatTile, BentoTile } from "@/components/bento";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
+import { LoadErrorBanner } from "@/components/ui/load-error-banner";
+import { Dialog } from "@/components/ui/dialog";
 import { FileText, FolderKanban, Plus, Pencil, Trash2 } from "lucide-react";
+import { api, ApiError } from "@/lib/api";
 
 export default function ProjectsPage() {
-  const { projects, fetchProjects, createProject } = useProjectStore();
+  const { projects, fetchProjects, createProject, error: loadError, loading, clearError } = useProjectStore();
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [renameTarget, setRenameTarget] = useState<{ id: string; name: string } | null>(null);
+  const [renaming, setRenaming] = useState(false);
+
+  useEffect(() => {
+    fetchProjects().catch(() => undefined);
+  }, [fetchProjects]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +44,19 @@ export default function ProjectsPage() {
     await fetchProjects();
   };
 
+  const submitRename = async () => {
+    if (!renameTarget) return;
+    const next = renameTarget.name.trim();
+    if (!next) return;
+    setRenaming(true);
+    try {
+      await handleRename(renameTarget.id, next);
+      setRenameTarget(null);
+    } finally {
+      setRenaming(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     await api.delete(`/projects/${id}`);
     setDeleteId(null);
@@ -49,6 +70,17 @@ export default function ProjectsPage() {
         title="Projects"
         description="Organize plugin outputs and workspace sessions."
       />
+
+      {loadError && (
+        <LoadErrorBanner
+          message={loadError}
+          onRetry={async () => {
+            clearError();
+            await fetchProjects();
+          }}
+          retrying={loading}
+        />
+      )}
 
       <BentoGrid columns={3}>
         <BentoStatTile
@@ -102,10 +134,7 @@ export default function ProjectsPage() {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-muted hover:text-foreground"
-                  onClick={() => {
-                    const newName = prompt("Rename project", p.project_name);
-                    if (newName) handleRename(p.id, newName);
-                  }}
+                  onClick={() => setRenameTarget({ id: p.id, name: p.project_name })}
                   aria-label="Rename project"
                 >
                   <Pencil className="h-4 w-4" />
@@ -143,6 +172,31 @@ export default function ProjectsPage() {
         onConfirm={() => deleteId && handleDelete(deleteId)}
         onCancel={() => setDeleteId(null)}
       />
+      <Dialog
+        open={Boolean(renameTarget)}
+        onClose={() => setRenameTarget(null)}
+        title="Rename project"
+        className="max-w-md"
+      >
+        <div className="space-y-4 p-5">
+          <Input
+            value={renameTarget?.name ?? ""}
+            onChange={(e) => setRenameTarget((prev) => (prev ? { ...prev, name: e.target.value } : prev))}
+            placeholder="Project name"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submitRename().catch(() => undefined);
+            }}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setRenameTarget(null)} disabled={renaming}>
+              Cancel
+            </Button>
+            <Button onClick={() => submitRename().catch(() => undefined)} disabled={renaming || !renameTarget?.name.trim()}>
+              {renaming ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }

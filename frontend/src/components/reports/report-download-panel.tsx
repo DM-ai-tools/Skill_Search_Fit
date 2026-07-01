@@ -27,11 +27,13 @@ export function ReportDownloadPanel({
   pluginName,
   onSave,
   saving,
+  saveLabel,
 }: {
   result: ExecuteResponse;
   pluginName: string;
   onSave?: () => void;
   saving?: boolean;
+  saveLabel?: string;
 }) {
   const [copied, setCopied] = useState(false);
   const markdown = getExecutionMarkdown(result.output, pluginName);
@@ -88,7 +90,7 @@ export function ReportDownloadPanel({
 
       {onSave && (
         <Button className="w-full" onClick={onSave} disabled={saving}>
-          {saving ? "Saving to project..." : "Save report to project"}
+          {saving ? "Saving to project..." : saveLabel ?? "Save report to project"}
         </Button>
       )}
     </BentoTile>

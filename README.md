@@ -46,6 +46,33 @@ npm run dev
 
 Open http://localhost:3000
 
+## Testing and shared API types
+
+### Backend integration tests
+
+```bash
+cd backend
+pytest tests/integration -m integration
+```
+
+### Frontend E2E (Playwright)
+
+```bash
+cd frontend
+npx playwright install
+npm run test:e2e
+```
+
+### OpenAPI-generated frontend types
+
+```bash
+cd backend
+python scripts/export_openapi.py
+
+cd ../frontend
+npm run types:openapi
+```
+
 ## Project structure
 
 ```
@@ -71,6 +98,17 @@ Base URL: `http://localhost:8000/api/v1`
 - CSRF cookie: `ssf_csrf` (readable; sent as `X-CSRF-Token` header on mutating requests)
 - OpenAPI docs: http://localhost:8000/docs
 
+### Pipeline execution
+
+| Endpoint | Inter-skill review | Use when |
+|----------|-------------------|----------|
+| `POST /pipelines/{id}/runs` | **Yes** — pauses between steps for input review | Dashboard Run Audit, pipeline view, any UI that should let users edit next-step inputs |
+| `POST /pipelines/{id}/continue` | Continues a paused run with optional `edited_inputs` | After review UI |
+| `POST /pipelines/{id}/execute-step` | **No** — legacy single-step loop | Avoid for new features |
+| `POST /pipelines/{id}/execute` | **No** — runs all steps unattended | Avoid for new features |
+
+Frontend: use `runPipelineWithReview()` from `frontend/src/lib/pipeline-run-orchestrator.ts` with `POST /pipelines/{id}/runs`.
+
 ## Railway deployment
 
 Deploy as **two services** from this monorepo (Postgres plugin or external database required for the API).
@@ -78,6 +116,7 @@ Deploy as **two services** from this monorepo (Postgres plugin or external datab
 | Service | Root directory | Builder |
 |---------|----------------|---------|
 | API | `backend` | `Dockerfile` (see `backend/railway.toml`) |
+| Worker | `backend` | `Dockerfile.worker` (see `backend/railway.worker.toml`) |
 | Web | `frontend` | `Dockerfile` (see `frontend/railway.toml`) |
 
 1. Create a Postgres database and attach `DATABASE_URL` to the API service.
@@ -86,6 +125,7 @@ Deploy as **two services** from this monorepo (Postgres plugin or external datab
 4. Set `API_PROXY_TARGET` on the web service to your API public URL (no trailing slash).
 5. Set `NEXT_PUBLIC_API_URL` on the web service **before build** to `https://<web>/api/v1`.
 6. Deploy API first; the container runs migrations, seeds admin/plugins, then binds `0.0.0.0:$PORT`.
+7. Deploy Worker service; it runs Arq jobs from Redis (`python scripts/run_worker.py`).
 
 Health checks: API `/health`, web `/`.
 

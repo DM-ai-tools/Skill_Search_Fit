@@ -30,6 +30,8 @@ class SaveOutputRequest(BaseModel):
     input_snapshot: dict
     schema_version: int
     generated_output: dict
+    pipeline_id: str | None = None
+    report_title: str | None = None
 
 
 class ExecutionRecord(BaseModel):

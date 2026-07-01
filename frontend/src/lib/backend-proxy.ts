@@ -18,3 +18,34 @@ export function proxyMisconfigurationHint(target: string): string | null {
   }
   return null;
 }
+
+/** Split a combined Set-Cookie header into individual cookie directives. */
+export function splitSetCookieHeader(value: string): string[] {
+  return value
+    .split(/,(?=\s*[^;,=\s]+=)/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+/** Forward backend Set-Cookie headers without merging them (required for auth). */
+export function appendBackendSetCookies(
+  backendHeaders: Headers,
+  response: { headers: Headers },
+): void {
+  const getSetCookie = (
+    backendHeaders as Headers & { getSetCookie?: () => string[] }
+  ).getSetCookie;
+
+  if (typeof getSetCookie === "function") {
+    for (const cookie of getSetCookie.call(backendHeaders)) {
+      response.headers.append("set-cookie", cookie);
+    }
+    return;
+  }
+
+  const combined = backendHeaders.get("set-cookie");
+  if (!combined) return;
+  for (const cookie of splitSetCookieHeader(combined)) {
+    response.headers.append("set-cookie", cookie);
+  }
+}

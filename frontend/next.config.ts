@@ -7,6 +7,7 @@ const PROXY_TIMEOUT_MS = Number(process.env.API_PROXY_TIMEOUT_MS || 600_000);
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(process.cwd()),
+  serverExternalPackages: ["puppeteer-core"],
   experimental: {
     proxyTimeout: PROXY_TIMEOUT_MS,
   },

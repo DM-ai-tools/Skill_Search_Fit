@@ -195,6 +195,9 @@ async def list_outputs(project_id: UUID, request: Request):
         for key in ("input_snapshot", "generated_output"):
             if isinstance(d[key], str):
                 d[key] = json.loads(d[key])
+        gen = d.get("generated_output") or {}
+        if isinstance(gen, dict) and gen.get("report_title"):
+            d["plugin_name"] = str(gen["report_title"])
         result.append(OutputResponse(**d))
     return result
 

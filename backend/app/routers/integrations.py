@@ -211,7 +211,28 @@ async def _test_wix_connection(site_id: str, api_key: str) -> PlatformTestRespon
         return PlatformTestResponse(success=False, error="Could not reach the Wix API.")
 
 
-async def _fetch_approved_changes(conn, suggestion_id: UUID, destination: str) -> list[ChangeResponse]:
+async def _verify_suggestion_owner(
+    conn,
+    suggestion_id: UUID,
+    user_id: UUID,
+) -> None:
+    """Ensure the change suggestion belongs to the authenticated user."""
+    owned = await conn.fetchval(
+        "SELECT 1 FROM change_suggestions WHERE id = $1 AND user_id = $2",
+        suggestion_id,
+        user_id,
+    )
+    if not owned:
+        raise not_found("Change suggestion not found")
+
+
+async def _fetch_approved_changes(
+    conn,
+    suggestion_id: UUID,
+    user_id: UUID,
+    destination: str,
+) -> list[ChangeResponse]:
+    await _verify_suggestion_owner(conn, suggestion_id, user_id)
     rows = await conn.fetch(
         """
         SELECT rc.id, rc.suggestion_id, rc.page_url, rc.change_type, rc.priority,
@@ -219,11 +240,14 @@ async def _fetch_approved_changes(conn, suggestion_id: UUID, destination: str) -
                rc.proposed_content, rc.edited_content, rc.source_excerpt,
                rc.approval_status, rc.created_at, rc.updated_at
         FROM suggestion_changes rc
+        INNER JOIN change_suggestions cs ON cs.id = rc.suggestion_id
         WHERE rc.suggestion_id = $1
+          AND cs.user_id = $2
           AND rc.approval_status = 'approved'
-          AND rc.destination = $2
+          AND rc.destination = $3
         """,
         suggestion_id,
+        user_id,
         destination,
     )
     return [ChangeResponse(**dict(r)) for r in rows]
@@ -321,7 +345,7 @@ async def check_elementor(request: Request, body: ElementorCheckRequest):
         if not integration or integration["status"] != "connected":
             raise AppError("WP_NOT_CONNECTED", "WordPress is not connected.", 400)
 
-        changes = await _fetch_approved_changes(conn, body.suggestion_id, "WordPress")
+        changes = await _fetch_approved_changes(conn, body.suggestion_id, user.id, "WordPress")
 
     if not changes:
         return ElementorCheckResponse(
@@ -420,10 +444,14 @@ async def publish_wordpress(request: Request, body: PublishRequest):
             raise AppError("WP_NOT_CONNECTED", "WordPress is not connected. Connect your site in Integrations.", 400)
         if integration["status"] == "reauth":
             raise AppError("WP_REAUTH_REQUIRED", "WordPress authentication expired. Please reconnect your site.", 400)
-        changes = await _fetch_approved_changes(conn, body.suggestion_id, "WordPress")
+        changes = await _fetch_approved_changes(conn, body.suggestion_id, user.id, "WordPress")
 
     if not changes:
-        return PublishResponse(dry_run=body.dry_run, results=[])
+        raise AppError(
+            "NO_APPROVED_CHANGES",
+            "No approved changes for WordPress.",
+            422,
+        )
 
     results, cache_cleared = await wordpress_agent.publish(user.id, changes, dry_run=body.dry_run)
 
@@ -501,10 +529,14 @@ async def publish_webflow(request: Request, body: PublishRequest):
         integration = await db.get_integration(conn, user.id, "Webflow")
         if not integration:
             raise AppError("WEBFLOW_NOT_CONNECTED", "Webflow is not connected. Connect in Integrations.", 400)
-        changes = await _fetch_approved_changes(conn, body.suggestion_id, "Webflow")
+        changes = await _fetch_approved_changes(conn, body.suggestion_id, user.id, "Webflow")
 
     if not changes:
-        return PublishResponse(dry_run=body.dry_run, results=[])
+        raise AppError(
+            "NO_APPROVED_CHANGES",
+            "No approved changes for Webflow.",
+            422,
+        )
 
     results = await webflow_agent.publish(user.id, changes, dry_run=body.dry_run)
     return PublishResponse(dry_run=body.dry_run, results=results)
@@ -569,10 +601,14 @@ async def publish_wix(request: Request, body: PublishRequest):
         integration = await db.get_integration(conn, user.id, "Wix")
         if not integration:
             raise AppError("WIX_NOT_CONNECTED", "Wix is not connected. Connect in Integrations.", 400)
-        changes = await _fetch_approved_changes(conn, body.suggestion_id, "Wix")
+        changes = await _fetch_approved_changes(conn, body.suggestion_id, user.id, "Wix")
 
     if not changes:
-        return PublishResponse(dry_run=body.dry_run, results=[])
+        raise AppError(
+            "NO_APPROVED_CHANGES",
+            "No approved changes for Wix.",
+            422,
+        )
 
     results = await wix_agent.publish(user.id, changes, dry_run=body.dry_run)
     return PublishResponse(dry_run=body.dry_run, results=results)

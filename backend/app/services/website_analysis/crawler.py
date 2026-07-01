@@ -6,10 +6,13 @@ import asyncio
 import logging
 import re
 import time
+from collections import deque
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
 import httpx
+
+from app.services.url_safety import UnsafeUrlError, assert_safe_http_url
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +100,12 @@ def page_snapshot_from_fetch(page: dict[str, Any]) -> dict[str, Any]:
 
 async def fetch_page_content(url: str, timeout_seconds: float = 10.0) -> dict[str, Any]:
     """Fetch a single URL and return a page snapshot (empty snapshot on failure)."""
+    try:
+        assert_safe_http_url(url)
+    except UnsafeUrlError as exc:
+        logger.warning("Blocked unsafe URL fetch: %s — %s", url, exc)
+        return page_snapshot_from_fetch({"url": url, "status": 0, "html": "", "error": str(exc)})
+
     async with httpx.AsyncClient(
         timeout=httpx.Timeout(timeout_seconds, connect=5.0),
         headers={"User-Agent": "SkillSearchFit-Analyzer/1.0"},
@@ -115,6 +124,11 @@ async def fetch_pages_content(urls: list[str], *, limit: int = 12) -> dict[str, 
     for url in urls:
         trimmed = url.strip()
         if not trimmed:
+            continue
+        try:
+            assert_safe_http_url(trimmed)
+        except UnsafeUrlError as exc:
+            logger.warning("Skipping unsafe URL in batch fetch: %s — %s", trimmed, exc)
             continue
         norm = trimmed.rstrip("/")
         if norm not in seen:
@@ -225,6 +239,18 @@ async def _discover_from_sitemap(client: httpx.AsyncClient, base_url: str) -> li
 
 async def crawl_website(base_url: str, timeout_seconds: int = 30) -> dict[str, Any]:
     """Best-effort full crawl of discoverable internal pages within timeout budget."""
+    try:
+        assert_safe_http_url(base_url)
+    except UnsafeUrlError as exc:
+        logger.warning("Blocked unsafe crawl target: %s — %s", base_url, exc)
+        return {
+            "base_url": base_url,
+            "pages": [],
+            "page_count": 0,
+            "combined_meta": {},
+            "error": str(exc),
+        }
+
     origin, prefix = site_base_parts(base_url)
     seed_targets = _build_seed_urls(base_url)
     pages: list[dict[str, Any]] = []
@@ -232,7 +258,7 @@ async def crawl_website(base_url: str, timeout_seconds: int = 30) -> dict[str, A
     combined_meta: dict[str, str] = {}
     discovered_set: set[str] = set()
     visited: set[str] = set()
-    queue: list[str] = []
+    queue: deque[str] = deque()
     deadline = time.monotonic() + timeout_seconds
     max_pages = 120
 
@@ -247,7 +273,7 @@ async def crawl_website(base_url: str, timeout_seconds: int = 30) -> dict[str, A
         while queue and len(visited) < max_pages and time.monotonic() < deadline:
             batch: list[str] = []
             while queue and len(batch) < 8 and len(visited) + len(batch) < max_pages:
-                u = queue.pop(0)
+                u = queue.popleft()
                 norm = u.rstrip("/")
                 if norm in visited:
                     continue

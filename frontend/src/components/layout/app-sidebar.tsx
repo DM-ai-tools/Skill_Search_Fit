@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutDashboard, FolderKanban, Puzzle, User, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Puzzle, User, ShieldCheck, FileText } from "lucide-react";
 import { ShellSidebar } from "@/components/layout/shell-sidebar";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -9,6 +9,7 @@ const nav = [
   { href: "/dashboard",  label: "Dashboard",     icon: LayoutDashboard },
   { href: "/plugins",    label: "Plugin Library", icon: Puzzle },
   { href: "/projects",   label: "Projects",       icon: FolderKanban },
+  { href: "/reports/review", label: "Publish Changes", icon: FileText },
   { href: "/profile",    label: "Profile",        icon: User },
 ];
 

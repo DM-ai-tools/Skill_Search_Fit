@@ -7,7 +7,8 @@ import { api } from "@/lib/api";
 import { displayPluginName } from "@/lib/plugin-catalog";
 import { downloadReportPdf } from "@/lib/report-pdf";
 import { getExecutionMarkdown } from "@/lib/report-utils";
-import { fetchPipelines, getPipelineById } from "@/lib/pipelines";
+import { fetchPipelines, getPipelineById, FULL_CONTENT_PAGE_PIPELINE_ID, isFullContentPagePipeline } from "@/lib/pipelines";
+import { savePipelineReportToProject } from "@/lib/save-pipeline-report";
 import { pluginSuggestions } from "@/lib/plugin-report-presenters";
 import { mergeMetrics } from "@/lib/report-view-model";
 import {
@@ -16,14 +17,22 @@ import {
 } from "@/components/reports/structured-report-view";
 import { UnifiedPipelineReportView } from "@/components/reports/unified-pipeline-report";
 import { PublishReadyPageView } from "@/components/reports/publish-ready-page";
+import { ReportAppearanceReviewPanel } from "@/components/reports/report-appearance-review";
+import { manifestFromUnifiedReport } from "@/lib/report-appearance-manifest";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { PipelineExecuteResponse, PublishReadyPage, UnifiedPipelineReport } from "@/lib/types";
+import { presentedReportToPdfDocument } from "@/lib/presented-report-pdf";
+import type { PresentedReport } from "@/components/reports/report-presentation-view";
+import { unifiedReportToPdfDocument } from "@/lib/unified-report-pdf";
+import { AiSetupBanner } from "@/components/system/ai-setup-banner";
+import { PipelinePagePreviewPanel } from "@/components/pipelines/pipeline-page-preview";
 import { useProjectStore } from "@/stores/project-store";
 
 export default function PipelineReportViewPage() {
   const params = useSearchParams();
   const pipelineId = params.get("pipelineId") || "";
   const projectId = params.get("projectId") || "";
+  const runId = params.get("runId") || "";
   const siteUrlParam = params.get("site_url") || "";
   const { activeProjectId } = useProjectStore();
   const effectiveProjectId = projectId || activeProjectId || "";
@@ -32,9 +41,11 @@ export default function PipelineReportViewPage() {
   const [unifiedReport, setUnifiedReport] = useState<UnifiedPipelineReport | null>(null);
   const [unifiedLoading, setUnifiedLoading] = useState(true);
   const [assembledPage, setAssembledPage] = useState<PublishReadyPage | null>(null);
+  const [presentedReport, setPresentedReport] = useState<PresentedReport | null>(null);
 
   // Fallback (legacy stacked view) state
   const [legacyResult, setLegacyResult] = useState<PipelineExecuteResponse | null>(null);
+  const [recentResults, setRecentResults] = useState<PipelineExecuteResponse | null>(null);
   const [pipelineName, setPipelineName] = useState("Pipeline Report");
   const [useFallback, setUseFallback] = useState(false);
 
@@ -53,6 +64,17 @@ export default function PipelineReportViewPage() {
     }
   }, [siteUrlParam]);
 
+  const effectiveRunId = runId || recentResults?.pipeline_run_id || "";
+
+  const appearanceManifest = useMemo(
+    () => (unifiedReport ? manifestFromUnifiedReport(unifiedReport) : null),
+    [unifiedReport],
+  );
+
+  useEffect(() => {
+    setPresentedReport(null);
+  }, [unifiedReport]);
+
   useEffect(() => {
     if (!pipelineId || !effectiveProjectId) {
       setError(
@@ -69,10 +91,11 @@ export default function PipelineReportViewPage() {
     (async () => {
       // Resolve pipeline name for PDF export / fallback label
       try {
-        const pipelines = await fetchPipelines();
+        const { pipelines, error } = await fetchPipelines();
         const pipeline =
           pipelines.find((p) => p.id === pipelineId) ?? getPipelineById(pipelineId);
         if (pipeline) setPipelineName(pipeline.name);
+        if (error) console.warn("[pipeline-view]", error);
       } catch {
         // Non-critical — pipeline name just shows as default
       }
@@ -82,25 +105,30 @@ export default function PipelineReportViewPage() {
         const domainParam = domain ? `&domain=${encodeURIComponent(domain)}` : "";
         const siteParam = siteUrlParam ? `&site_url=${encodeURIComponent(siteUrlParam)}` : "";
 
-        const [unifiedData, assembledData] = await Promise.allSettled([
+        const [unifiedData, assembledData, recentData] = await Promise.allSettled([
           api.get<UnifiedPipelineReport>(
             `/pipelines/${pipelineId}/unified-report?project_id=${encodeURIComponent(effectiveProjectId)}${domainParam}`,
           ),
-          pipelineId === "full-content-page-pipeline"
+          pipelineId === FULL_CONTENT_PAGE_PIPELINE_ID
             ? api.get<PublishReadyPage>(
                 `/pipelines/${pipelineId}/assembled-page?project_id=${encodeURIComponent(effectiveProjectId)}${siteParam}`,
               )
-            : Promise.reject(new Error("not full-content pipeline")),
+            : Promise.resolve(null),
+          api.get<PipelineExecuteResponse>(
+            `/pipelines/${pipelineId}/recent-results?project_id=${encodeURIComponent(effectiveProjectId)}`,
+          ),
         ]);
 
         if (!cancelled) {
           if (unifiedData.status === "fulfilled") {
             setUnifiedReport(unifiedData.value);
           } else {
-            // Unified report failed — fall through to legacy view
             throw unifiedData.reason;
           }
-          if (assembledData.status === "fulfilled") setAssembledPage(assembledData.value);
+          if (assembledData.status === "fulfilled" && assembledData.value) {
+            setAssembledPage(assembledData.value);
+          }
+          if (recentData.status === "fulfilled") setRecentResults(recentData.value);
           setUnifiedLoading(false);
         }
         return; // ← primary path done; skip fallback
@@ -131,22 +159,34 @@ export default function PipelineReportViewPage() {
 
   // ── Legacy view helpers (only used when useFallback === true) ────────────
 
-  const stepReports = useMemo(() => {
-    if (!legacyResult?.steps.length) return [];
-    return buildPipelineStepReports(legacyResult.steps, (step) =>
+  const unifiedStepReports = useMemo(() => {
+    if (!recentResults?.steps.length) return [];
+    return buildPipelineStepReports(recentResults.steps, (step) =>
       getExecutionMarkdown(
         step.output ?? { markdown: step.output_markdown, structured: {} },
         step.plugin_name,
       ),
     );
-  }, [legacyResult]);
+  }, [recentResults]);
+
+  const stepReports = useMemo(() => {
+    const source = useFallback ? legacyResult : recentResults;
+    if (!source?.steps.length) return [];
+    return buildPipelineStepReports(source.steps, (step) =>
+      getExecutionMarkdown(
+        step.output ?? { markdown: step.output_markdown, structured: {} },
+        step.plugin_name,
+      ),
+    );
+  }, [legacyResult, recentResults, useFallback]);
 
   const combinedMarkdown = useMemo(() => {
-    if (!legacyResult) return "";
+    const source = useFallback ? legacyResult : recentResults;
+    if (!source) return "";
     return stepReports
       .map((step) => `## Step ${step.step}: ${step.label}\n\n${step.markdown}`)
       .join("\n\n---\n\n");
-  }, [legacyResult, stepReports]);
+  }, [legacyResult, recentResults, useFallback, stepReports]);
 
   const metrics = useMemo(
     () =>
@@ -163,57 +203,90 @@ export default function PipelineReportViewPage() {
   }, [stepReports]);
 
   const pipelineReportJson = useMemo(() => {
-    if (!legacyResult || !stepReports[0]) return null;
+    const source = useFallback ? legacyResult : recentResults;
+    if (!source || !stepReports[0]) return null;
     return {
       ...stepReports[0].reportJson,
       plugin_name: pipelineName,
-      execution_id: legacyResult.steps.map((s) => s.execution_id).join(","),
+      execution_id: source.steps.map((s) => s.execution_id).join(","),
     };
-  }, [legacyResult, stepReports, pipelineName]);
+  }, [legacyResult, recentResults, useFallback, stepReports, pipelineName]);
 
   const suggestions = useMemo(() => {
-    const names = legacyResult?.steps.map((s) => s.plugin_name) ?? [];
+    const source = useFallback ? legacyResult : recentResults;
+    const names = source?.steps.map((s) => s.plugin_name) ?? [];
     const unique = [...new Set(names)];
     return unique.flatMap((name) => pluginSuggestions(name)).slice(0, 5);
-  }, [legacyResult]);
+  }, [legacyResult, recentResults, useFallback]);
 
   // ── Save handler (works for both views) ──────────────────────────────────
 
+  const executionIds = useMemo(() => {
+    const source = recentResults ?? legacyResult;
+    return source?.steps.map((s) => s.execution_id).join(", ") ?? "";
+  }, [recentResults, legacyResult]);
+
   const handleSaveAll = async () => {
-    if (!effectiveProjectId) return;
-    const steps = legacyResult?.steps ?? [];
+    if (!effectiveProjectId || !pipelineId) return;
+    const steps = (recentResults ?? legacyResult)?.steps ?? [];
     if (!steps.length) return;
+    const pipeline =
+      getPipelineById(pipelineId) ?? {
+        id: pipelineId,
+        name: pipelineName,
+        description: "",
+        icon: "",
+        impact: 0,
+        steps: [],
+        step_count: steps.length,
+      };
     setSaving(true);
     setSaveMessage("");
     try {
-      for (const step of steps) {
-        const output = step.output ?? { markdown: step.output_markdown, structured: {} };
-        await api.post("/outputs", {
-          project_id: effectiveProjectId,
-          plugin_id: step.plugin_id,
-          execution_id: step.execution_id,
-          input_snapshot: {},
-          schema_version: step.schema_version ?? 1,
-          generated_output: output,
-        });
-      }
-      setSaveMessage(`Saved ${steps.length} reports to project.`);
+      await savePipelineReportToProject({
+        projectId: effectiveProjectId,
+        pipeline,
+        steps,
+        pipelineRunId: effectiveRunId || null,
+      });
+      setSaveMessage(`Saved "${pipeline.name}" to project.`);
     } catch {
-      setError("Failed to save one or more reports.");
+      setError("Failed to save pipeline report.");
     } finally {
       setSaving(false);
     }
   };
 
   const handleDownloadPdf = async () => {
-    if (!stepReports.length) return;
     setPdfDownloading(true);
     setError("");
     try {
+      if (unifiedReport && !useFallback) {
+        if (presentedReport) {
+          await downloadReportPdf(
+            presentedReportToPdfDocument(presentedReport, {
+              pipelineName,
+              siteUrl: siteUrlParam,
+              executionId: executionIds,
+              deliverable: unifiedReport.final_deliverable,
+            }),
+          );
+        } else {
+          await downloadReportPdf(
+            unifiedReportToPdfDocument(unifiedReport, {
+              pipelineName,
+              siteUrl: siteUrlParam,
+              executionId: executionIds,
+            }),
+          );
+        }
+        return;
+      }
+      if (!stepReports.length) return;
       await downloadReportPdf({
         pluginName: pipelineName,
         title: pipelineName,
-        executionId: legacyResult?.steps.map((s) => s.execution_id).join(", "),
+        executionId: executionIds,
         generatedAt: new Date().toISOString(),
         overallScore,
         sections: [],
@@ -265,23 +338,40 @@ export default function PipelineReportViewPage() {
   if (unifiedReport && !useFallback) {
     return (
       <div className="space-y-6">
-        {/* Publish-ready page section — only for full-content pipeline */}
-        {assembledPage && (
-          <PublishReadyPageView page={assembledPage} />
-        )}
+        <AiSetupBanner mode="presentation" />
 
-        {/* Unified report sections below */}
         <UnifiedPipelineReportView
           report={unifiedReport}
-          onSave={legacyResult ? handleSaveAll : undefined}
+          onSave={recentResults ? handleSaveAll : undefined}
           saving={saving}
           saveMessage={saveMessage}
           error={error}
-          onDownloadPdf={legacyResult ? handleDownloadPdf : undefined}
+          onDownloadPdf={handleDownloadPdf}
           pdfDownloading={pdfDownloading}
+          onPresentationReady={setPresentedReport}
           backHref="/dashboard"
           backLabel="Back to dashboard"
         />
+
+        {appearanceManifest && (
+          <ReportAppearanceReviewPanel manifest={appearanceManifest} />
+        )}
+
+        {assembledPage && isFullContentPagePipeline(pipelineId) && (
+          <PublishReadyPageView page={assembledPage} />
+        )}
+
+        {isFullContentPagePipeline(pipelineId) && effectiveRunId && (
+          <section className="space-y-2">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Website preview</h2>
+              <p className="text-sm text-muted">
+                Your publish-ready page is being generated in the background while you review the report above.
+              </p>
+            </div>
+            <PipelinePagePreviewPanel pipelineRunId={effectiveRunId} />
+          </section>
+        )}
       </div>
     );
   }

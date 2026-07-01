@@ -17,6 +17,7 @@ from app.schemas.execution import (
 from app.schemas.projects import OutputResponse
 from app.services.activity import log_activity
 from app.services.execution import run_plugin
+from app.services.webhooks.dispatcher import emit_event
 from app.services.website_analysis.intelligence import enrich_inputs_from_cache
 
 router = APIRouter(tags=["execution"])
@@ -38,6 +39,18 @@ async def execute_plugin(plugin_id: UUID, body: ExecuteRequest, request: Request
         user_id=user.id,
         ip_address=ip,
     )
+    async with pool.acquire() as conn:
+        await emit_event(
+            conn,
+            user_id=user.id,
+            event_name="execution.completed",
+            payload={
+                "plugin_id": str(plugin_id),
+                "project_id": str(body.project_id),
+                "execution_id": str(result.get("execution_id") or ""),
+                "status": result.get("status"),
+            },
+        )
     return ExecuteResponse(**result)
 
 
@@ -79,6 +92,26 @@ async def save_output(body: SaveOutputRequest, request: Request):
         if not project:
             raise not_found("Project not found")
 
+        generated_output = dict(body.generated_output)
+        if body.pipeline_id:
+            generated_output["pipeline_id"] = body.pipeline_id
+            generated_output["pipeline_report"] = True
+        if body.report_title:
+            generated_output["report_title"] = body.report_title
+
+        if body.pipeline_id:
+            await conn.execute(
+                """
+                DELETE FROM outputs
+                WHERE project_id = $1
+                  AND user_id = $2
+                  AND generated_output->>'pipeline_id' = $3
+                """,
+                body.project_id,
+                user.id,
+                body.pipeline_id,
+            )
+
         row = await conn.fetchrow(
             """
             INSERT INTO outputs (
@@ -95,7 +128,7 @@ async def save_output(body: SaveOutputRequest, request: Request):
             body.execution_id,
             json.dumps(body.input_snapshot),
             body.schema_version,
-            json.dumps(body.generated_output),
+            json.dumps(generated_output),
         )
 
         await log_activity(

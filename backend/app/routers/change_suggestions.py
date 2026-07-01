@@ -69,16 +69,27 @@ async def _get_approved_changes(conn, suggestion_id: UUID) -> list[ChangeRespons
     return [_row_to_change(dict(r)) for r in rows]
 
 
-async def _dispatch_publish(destination: str, changes: list[ChangeResponse], dry_run: bool):
+async def _dispatch_publish(
+    user_id: UUID,
+    destination: str,
+    changes: list[ChangeResponse],
+    dry_run: bool,
+) -> list:
+    """Publish via per-user integration agents (not global env credentials)."""
     if destination == "WordPress":
-        from app.services.change_suggestions.publishers.wordpress import publish
-    elif destination == "Webflow":
-        from app.services.change_suggestions.publishers.webflow import publish
-    elif destination == "Wix":
-        from app.services.change_suggestions.publishers.wix import publish
-    else:
-        raise AppError("INVALID_DESTINATION", f"Unknown destination: {destination}", 400)
-    return await publish(changes, dry_run=dry_run)
+        from app.services.integrations.wordpress_agent import publish as wp_publish
+
+        results, _cache = await wp_publish(user_id, changes, dry_run=dry_run)
+        return results
+    if destination == "Webflow":
+        from app.services.integrations.webflow_agent import publish as wf_publish
+
+        return await wf_publish(user_id, changes, dry_run=dry_run)
+    if destination == "Wix":
+        from app.services.integrations.wix_agent import publish as wix_publish
+
+        return await wix_publish(user_id, changes, dry_run=dry_run)
+    raise AppError("INVALID_DESTINATION", f"Unknown destination: {destination}", 400)
 
 
 # ── routes ─────────────────────────────────────────────────────────────────────
@@ -329,7 +340,7 @@ async def publish_suggestion(suggestion_id: UUID, body: PublishRequest, request:
             422,
         )
 
-    results = await _dispatch_publish(body.destination, approved, dry_run=body.dry_run)
+    results = await _dispatch_publish(user.id, body.destination, approved, dry_run=body.dry_run)
 
     results_json = [r.model_dump() for r in results]
     async with pool.acquire() as conn:

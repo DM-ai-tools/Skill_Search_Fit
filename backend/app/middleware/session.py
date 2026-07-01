@@ -20,6 +20,7 @@ PUBLIC_PATHS = {
     "/api/v1/auth/login",
     "/api/v1/auth/admin/login",
     "/api/v1/auth/signup",
+    "/api/v1/contact",
     "/health",
     "/health/ready",
     "/docs",
@@ -180,19 +181,21 @@ class SessionMiddleware(BaseHTTPMiddleware):
                 except ValueError:
                     pass
 
-            if request.method in {"POST", "PUT", "PATCH", "DELETE"} and path not in PUBLIC_PATHS:
+            requires_session = request.method != "OPTIONS" and path not in PUBLIC_PATHS
+            if requires_session:
                 session: SessionData | None = request.state.session
                 if not session:
                     return JSONResponse(
                         status_code=401,
                         content={"error": {"code": "UNAUTHORIZED", "message": "Unauthorized", "details": []}},
                     )
-                csrf_header = request.headers.get("x-csrf-token")
-                if not csrf_header or csrf_header != session.csrf_token:
-                    return JSONResponse(
-                        status_code=403,
-                        content={"error": {"code": "CSRF_TOKEN_INVALID", "message": "Invalid or missing CSRF token", "details": []}},
-                    )
+                if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+                    csrf_header = request.headers.get("x-csrf-token")
+                    if not csrf_header or csrf_header != session.csrf_token:
+                        return JSONResponse(
+                            status_code=403,
+                            content={"error": {"code": "CSRF_TOKEN_INVALID", "message": "Invalid or missing CSRF token", "details": []}},
+                        )
 
         return await call_next(request)
 

@@ -112,6 +112,13 @@ export function parseBlocksFromBody(body: string): ReportBlock[] {
       continue;
     }
 
+    if (/^#{1,6}\s+/.test(line)) {
+      const text = cleanReportLine(line.replace(/^#{1,6}\s+/, ""));
+      if (text) blocks.push({ type: "paragraph", text });
+      i += 1;
+      continue;
+    }
+
     if (/^>\s?/.test(line)) {
       const text = cleanReportLine(line.replace(/^>\s?/, ""));
       if (text) blocks.push({ type: "paragraph", text });

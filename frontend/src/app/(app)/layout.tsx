@@ -10,6 +10,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { useAuthStore } from "@/stores/auth-store";
 import { useProjectStore } from "@/stores/project-store";
 import { useIntegrationsStore } from "@/stores/integrations-store";
+import { useTenancyStore } from "@/stores/tenancy-store";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +54,7 @@ function ImpersonationBanner() {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const fetchProjects = useProjectStore((s) => s.fetchProjects);
   const fetchIntegrations = useIntegrationsStore((s) => s.fetch);
+  const fetchTenancy = useTenancyStore((s) => s.fetch);
   const pathname = usePathname();
   const isWorkspace = pathname.startsWith("/workspace");
   const isReportView =
@@ -63,7 +65,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     fetchProjects().catch(() => undefined);
     fetchIntegrations().catch(() => undefined);
-  }, [fetchProjects, fetchIntegrations]);
+    fetchTenancy().catch(() => undefined);
+  }, [fetchProjects, fetchIntegrations, fetchTenancy]);
 
   return (
     <AuthGuard>

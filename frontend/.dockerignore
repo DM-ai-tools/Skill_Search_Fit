@@ -4,6 +4,9 @@ node_modules
 .env.*
 !.env.local.example
 *.md
+playwright-report/
+test-results/
+tests/
 .git
 .gitignore
 npm-debug.log*

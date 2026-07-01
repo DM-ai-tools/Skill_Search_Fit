@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: skillsearchfit
+          POSTGRES_PASSWORD: skillsearchfit
+          POSTGRES_DB: skillsearchfit
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U skillsearchfit"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest ruff mypy bandit
+      - name: Backend lint
+        run: ruff check app tests --select E9,F63,F7,F82
+      - name: Backend type checks
+        run: mypy app/middleware/session.py app/routers/system.py --ignore-missing-imports
+      - name: Backend security checks
+        run: bandit -q -r app -lll
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql://skillsearchfit:skillsearchfit@localhost:5432/skillsearchfit
+        run: python scripts/migrate.py
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://skillsearchfit:skillsearchfit@localhost:5432/skillsearchfit
+          REDIS_URL: redis://localhost:6379/0
+        run: pytest tests/ -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: Playwright smoke
+        run: npm run test:e2e
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1

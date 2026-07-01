@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import {
+  appendBackendSetCookies,
   getApiProxyTarget,
   proxyMisconfigurationHint,
 } from "@/lib/backend-proxy";
 
 const PROXY_TIMEOUT_MS = Number(process.env.API_PROXY_TIMEOUT_MS || 600_000);
 const PIPELINE_TIMEOUT_MS = 1_800_000; // 30 min per pipeline step
+const AI_REPORT_TIMEOUT_MS = Number(process.env.API_PROXY_AI_TIMEOUT_MS || 900_000); // 15 min
 
 export const maxDuration = 600;
 export const dynamic = "force-dynamic";
@@ -15,7 +17,6 @@ async function proxyToBackend(request: NextRequest, pathSegments: string[]) {
   const BACKEND = getApiProxyTarget();
   const misconfig = proxyMisconfigurationHint(BACKEND);
   if (misconfig) {
-    console.error("[api-proxy] misconfigured:", misconfig);
     return NextResponse.json(
       {
         error: {
@@ -29,10 +30,19 @@ async function proxyToBackend(request: NextRequest, pathSegments: string[]) {
 
   const search = request.nextUrl.search;
   const targetUrl = `${BACKEND}/api/v1/${pathSegments.join("/")}${search}`;
-  const isLongRunning =
+  const isPipelineExecute =
     pathSegments[0] === "execute" ||
     (pathSegments[0] === "pipelines" &&
-      (pathSegments[2] === "execute" || pathSegments[2] === "execute-step"));
+      (pathSegments[2] === "runs" || pathSegments[1] === "runs"));
+  const isAiReport =
+    pathSegments[0] === "reports" &&
+    (pathSegments[1] === "present-appearance" || pathSegments[1] === "preview-article");
+
+  const timeoutMs = isPipelineExecute
+    ? PIPELINE_TIMEOUT_MS
+    : isAiReport
+      ? AI_REPORT_TIMEOUT_MS
+      : PROXY_TIMEOUT_MS;
 
   const headers = new Headers();
   const cookie = request.headers.get("cookie");
@@ -45,7 +55,7 @@ async function proxyToBackend(request: NextRequest, pathSegments: string[]) {
   const init: RequestInit = {
     method: request.method,
     headers,
-    signal: AbortSignal.timeout(isLongRunning ? PIPELINE_TIMEOUT_MS : PROXY_TIMEOUT_MS),
+    signal: AbortSignal.timeout(timeoutMs),
   };
 
   if (request.method !== "GET" && request.method !== "HEAD") {
@@ -58,12 +68,7 @@ async function proxyToBackend(request: NextRequest, pathSegments: string[]) {
     const body = await backendRes.arrayBuffer();
     const response = new NextResponse(body, { status: backendRes.status });
 
-    backendRes.headers.forEach((value, key) => {
-      const lower = key.toLowerCase();
-      if (lower === "set-cookie") {
-        response.headers.append(key, value);
-      }
-    });
+    appendBackendSetCookies(backendRes.headers, response);
 
     const backendContentType = backendRes.headers.get("content-type");
     if (backendContentType) {
@@ -72,16 +77,14 @@ async function proxyToBackend(request: NextRequest, pathSegments: string[]) {
 
     return response;
   } catch (err) {
-    console.error(
-      `[api-proxy] ${request.method} ${targetUrl} failed after ${Date.now() - startedAt}ms:`,
-      err,
-    );
     return NextResponse.json(
       {
         error: {
           code: "PROXY_ERROR",
           message:
-            "API proxy could not reach the backend. Verify API_PROXY_TARGET on the frontend Railway service.",
+            err instanceof Error && err.name === "TimeoutError"
+              ? "The request timed out. OpenAI formatting can take a few minutes — try Refresh preview."
+              : "API proxy could not reach the backend. Ensure the backend is running and API_PROXY_TARGET is set correctly.",
           backend: BACKEND.replace(/\/\/[^@]+@/, "//***@"),
         },
       },

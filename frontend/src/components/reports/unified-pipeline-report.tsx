@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { ChevronDown, ChevronUp, Copy, FileDown, Save } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ReportPresentationView } from "@/components/reports/report-presentation-view";
 import { parseBlocksFromBody } from "@/lib/report-view-model";
 import { renderReportBlocks } from "@/components/reports/structured-report-view";
 import type { UnifiedPipelineReport, UnifiedPipelineSection } from "@/lib/types";
@@ -210,9 +210,9 @@ export function UnifiedPipelineReportView({
   saveMessage,
   error,
   pdfDownloading,
+  pdfDisabled,
   onDownloadPdf,
-  backHref = "/dashboard",
-  backLabel = "Back to dashboard",
+  onPresentationReady,
 }: {
   report: UnifiedPipelineReport;
   onSave?: () => void;
@@ -220,14 +220,14 @@ export function UnifiedPipelineReportView({
   saveMessage?: string;
   error?: string;
   pdfDownloading?: boolean;
+  pdfDisabled?: boolean;
   onDownloadPdf?: () => void;
+  onPresentationReady?: (presented: import("@/components/reports/report-presentation-view").PresentedReport) => void;
   backHref?: string;
   backLabel?: string;
 }) {
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
-      {/* ── Main column ── */}
-      <div className="space-y-5">
+    <div className="space-y-5">
         {/* Header card */}
         <Card className="glass-panel-strong overflow-hidden border-border/70">
           <CardHeader className="border-b border-border">
@@ -255,10 +255,14 @@ export function UnifiedPipelineReportView({
                     variant="outline"
                     className="gap-2"
                     onClick={onDownloadPdf}
-                    disabled={pdfDownloading}
+                    disabled={pdfDownloading || pdfDisabled}
                   >
                     <FileDown className="h-4 w-4" />
-                    {pdfDownloading ? "Generating…" : "Download PDF"}
+                    {pdfDownloading
+                      ? "Generating…"
+                      : pdfDisabled
+                        ? "Preparing PDF…"
+                        : "Download PDF"}
                   </Button>
                 )}
                 {onSave && (
@@ -269,7 +273,7 @@ export function UnifiedPipelineReportView({
                     disabled={saving}
                   >
                     <Save className="h-4 w-4" />
-                    {saving ? "Saving…" : "Save all reports"}
+                    {saving ? "Saving…" : "Save report"}
                   </Button>
                 )}
               </div>
@@ -292,8 +296,18 @@ export function UnifiedPipelineReportView({
           )}
         </Card>
 
-        {/* Report body */}
-        <article className="glass-panel-strong space-y-6 rounded-2xl border-border/70 p-4 sm:p-6 lg:p-7">
+        <ReportPresentationView
+          report={report}
+          deliverable={report.final_deliverable}
+          onPresentationReady={onPresentationReady}
+        />
+
+        {/* Legacy raw sections hidden — presentation view is the primary display */}
+        <details className="glass-panel-strong rounded-2xl border-border/70 p-4 sm:p-5">
+          <summary className="cursor-pointer text-sm font-medium text-muted hover:text-primary">
+            View original section layout
+          </summary>
+          <article className="mt-4 space-y-6">
           {/* Metrics strip */}
           <MetricsStrip report={report} />
 
@@ -332,67 +346,8 @@ export function UnifiedPipelineReportView({
           {report.final_deliverable && (
             <FinalDeliverableCard deliverable={report.final_deliverable} />
           )}
-        </article>
-      </div>
-
-      {/* ── Sidebar ── */}
-      <aside className="order-first space-y-5 xl:order-none xl:sticky xl:top-6 xl:self-start">
-        {/* Pipeline overview */}
-        <Card className="glass-panel border-border/70">
-          <CardHeader>
-            <CardTitle className="text-base tracking-tight">Pipeline Overview</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-xs text-muted leading-relaxed">{report.pipeline_purpose}</p>
-            <div className="space-y-1.5">
-              {report.sections.map((section, i) => (
-                <a
-                  key={section.id}
-                  href={`#section-${section.id}`}
-                  className="flex items-center gap-2 rounded-lg border border-border/60 bg-surface/80 px-3 py-2 text-sm text-foreground hover:border-primary/30 hover:text-primary transition-colors"
-                >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
-                    {i + 1}
-                  </span>
-                  <span className="truncate">{section.title}</span>
-                </a>
-              ))}
-              {report.final_deliverable && (
-                <a
-                  href="#section-final-deliverable"
-                  className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/8 px-3 py-2 text-sm font-medium text-primary hover:bg-primary/12 transition-colors"
-                >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-[10px] font-semibold text-primary">
-                    ★
-                  </span>
-                  <span>Final Deliverable</span>
-                </a>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Actions */}
-        <Card className="glass-panel border-border/70">
-          <CardHeader>
-            <CardTitle className="text-base tracking-tight">Next Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Link
-              href={`/pipeline/${report.pipeline_id}`}
-              className="block rounded-lg border border-primary/25 bg-primary/8 px-3 py-2 text-center text-sm font-medium text-primary transition-colors hover:bg-primary/15"
-            >
-              Re-run Pipeline
-            </Link>
-            <Link
-              href={backHref}
-              className="block rounded-lg px-2 py-1.5 text-sm font-medium text-primary transition-all duration-200 hover:bg-accent-soft/60 hover:underline"
-            >
-              {backLabel}
-            </Link>
-          </CardContent>
-        </Card>
-      </aside>
+          </article>
+        </details>
     </div>
   );
 }

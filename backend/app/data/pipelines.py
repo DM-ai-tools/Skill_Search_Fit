@@ -1,5 +1,6 @@
 """Multi-plugin workflow definitions from SearchFit combination analysis."""
 
+import re
 from typing import Any
 
 PIPELINES: list[dict[str, Any]] = [
@@ -56,6 +57,26 @@ PIPELINES: list[dict[str, Any]] = [
             {"plugin_name": "SEO Check", "label": "Asset verification"},
         ],
     },
+    {
+        "id": "full-content-page-pipeline",
+        "name": "Full Content Page Pipeline",
+        "description": (
+            "7-step pipeline from seed idea through topic research, keyword clustering, "
+            "content strategy, brief, full draft, on-page SEO, and internal linking — "
+            "one pipeline, one publish-ready page."
+        ),
+        "icon": "file-pen",
+        "impact": 9,
+        "steps": [
+            {"plugin_name": "Create Topic", "label": "Topic angle & seed keywords"},
+            {"plugin_name": "Keyword Clustering", "label": "Keyword groups & clusters"},
+            {"plugin_name": "Content Strategy", "label": "Content pillars & page map"},
+            {"plugin_name": "Content Brief", "label": "Writer-ready brief"},
+            {"plugin_name": "Create Content", "label": "Full draft article"},
+            {"plugin_name": "On-Page SEO", "label": "SEO optimization"},
+            {"plugin_name": "Internal Linking", "label": "Link wiring plan"},
+        ],
+    },
 ]
 
 
@@ -80,6 +101,33 @@ def _resolved_competitors(base: dict[str, Any], prior_markdown: list[str]) -> st
     if prior_markdown:
         return prior_markdown[0][:6000]
     return ""
+
+
+def _keywords_from_prior_steps(prior_markdown: list[str]) -> str:
+    """Pull keyword-like lines from earlier pipeline step outputs."""
+    if not prior_markdown:
+        return ""
+
+    found: list[str] = []
+    seen: set[str] = set()
+    skip_fragments = ("step ", "http", "---", "cluster map", "topic research")
+
+    for line in "\n".join(prior_markdown).splitlines():
+        cleaned = re.sub(r"^[\s#>*\-\d+.]+", "", line).strip()
+        if not cleaned or len(cleaned) > 100 or cleaned.count(" ") > 8:
+            continue
+        lower = cleaned.lower()
+        if any(fragment in lower for fragment in skip_fragments):
+            continue
+        key = lower
+        if key in seen:
+            continue
+        seen.add(key)
+        found.append(cleaned)
+        if len(found) >= 8:
+            break
+
+    return "\n".join(found)
 
 
 def build_step_inputs(
@@ -126,12 +174,42 @@ def build_step_inputs(
         }
 
     if plugin_name == "Keyword Clustering":
+        keywords = (
+            str(base.get("keywords") or "").strip()
+            or _keywords_from_prior_steps(prior_markdown)
+            or seed
+            or brand
+        )
         return {
-            "keywords": seed or brand,
+            "keywords": keywords,
             "intent_filter": "all",
             "business_niche": brand,
             "website_url": site_url,
             "exclude_keywords": "",
+        }
+
+    if plugin_name in ("Content Strategy", "content-strategy"):
+        seed_keywords = (
+            str(base.get("seed_keywords") or "").strip()
+            or _keywords_from_prior_steps(prior_markdown)
+            or seed
+            or brand
+        )
+        business_description = (
+            str(base.get("business_description") or "").strip()
+            or str(base.get("value_proposition") or "").strip()
+        )
+        return {
+            "business_name": brand,
+            "business_description": business_description,
+            "target_audience": audience,
+            "seed_keywords": seed_keywords,
+            "competitors": competitor_context or competitors,
+            "existing_content": context[:6000] if context else "",
+            "website_url": site_url,
+            "publishing_cadence": base.get("publishing_cadence", "growth"),
+            "planning_horizon": base.get("planning_horizon", "8"),
+            "business_priorities": base.get("business_priorities", base.get("content_goal", "")),
         }
 
     if plugin_name in ("Content Brief Generator", "Content Brief"):

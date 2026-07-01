@@ -6,6 +6,9 @@ export function stripMarkdown(text: string): string {
   let s = text.trim();
   if (!s) return "";
 
+  // ATX headings: ### Title → Title
+  s = s.replace(/^#{1,6}\s+/gm, "");
+
   // Links: [label](url) → label
   s = s.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");
   // Images: ![alt](url) → alt

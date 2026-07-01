@@ -35,6 +35,7 @@ export function PluginReportOutput({
   onSave,
   saving,
   className,
+  saveLabel,
 }: {
   result: ExecuteResponse;
   pluginName: string;
@@ -42,6 +43,7 @@ export function PluginReportOutput({
   onSave?: () => void;
   saving?: boolean;
   className?: string;
+  saveLabel?: string;
 }) {
   const markdown = getExecutionMarkdown(result.output, pluginName);
   const structured = result.output?.structured;
@@ -61,6 +63,7 @@ export function PluginReportOutput({
         pluginName={pluginName}
         onSave={onSave}
         saving={saving}
+        saveLabel={saveLabel}
       />
 
       {markdown ? (

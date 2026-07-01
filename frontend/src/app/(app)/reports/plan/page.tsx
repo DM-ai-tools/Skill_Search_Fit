@@ -60,10 +60,18 @@ export default function PlanPage() {
 
   const changes = mergedChanges();
 
-  // ── Load from URL if store doesn't have this report ───────────────────────
+  // ── Always load from server when URL or persisted id is present ───────────
   useEffect(() => {
-    if (!urlSuggestionId || urlSuggestionId === suggestionId) return;
-    changeSuggestionsApi.get(urlSuggestionId).then(loadSuggestion).catch(() => setLoadError(true));
+    const id = urlSuggestionId || suggestionId;
+    if (!id) return;
+    setLoadError(false);
+    changeSuggestionsApi
+      .get(id)
+      .then((data) => {
+        loadSuggestion(data);
+        setView("review");
+      })
+      .catch(() => setLoadError(true));
   }, [urlSuggestionId, suggestionId, loadSuggestion]);
 
   // ── Local state ───────────────────────────────────────────────────────────

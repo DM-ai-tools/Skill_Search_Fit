@@ -12,7 +12,7 @@ function resolveApiUrl(): string {
   return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 }
 
-const LONG_RUNNING_PATH_RE = /\/(execute\/|pipelines\/[^/]+\/execute)/;
+const LONG_RUNNING_PATH_RE = /\/(execute\/|pipelines\/[^/]+\/runs)/;
 
 export class ApiError extends Error {
   code: string;
@@ -68,10 +68,28 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   if (!res.ok) {
     const err = data?.error || data?.detail?.error || data?.detail;
+    const code = err?.code || "UNKNOWN_ERROR";
+    const status = res.status;
+
+    if (
+      status === 401 &&
+      typeof window !== "undefined" &&
+      !window.location.pathname.startsWith("/login") &&
+      !window.location.pathname.startsWith("/admin/login")
+    ) {
+      const redirect = encodeURIComponent(
+        `${window.location.pathname}${window.location.search}`,
+      );
+      window.location.replace(`/login?redirect=${redirect}&reason=session_expired`);
+      await new Promise(() => {
+        /* wait for navigation */
+      });
+    }
+
     throw new ApiError(
-      err?.code || "UNKNOWN_ERROR",
+      code,
       err?.message || (typeof data?.detail === "string" ? data.detail : "Request failed"),
-      res.status,
+      status,
       err?.details || [],
     );
   }

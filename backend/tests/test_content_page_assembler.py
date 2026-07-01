@@ -6,6 +6,7 @@ from app.services.reports.content_page_assembler import (
     _build_image_brief,
     _build_publish_checklist,
     _build_slug,
+    _extract_article_body,
     _extract_h1,
     _extract_image_alts,
     _extract_inbound_links,
@@ -103,6 +104,46 @@ def test_extract_h1_returns_first_h1_only():
 
 def test_extract_h1_returns_empty_on_no_match():
     assert _extract_h1("No headings here") == ""
+
+
+def test_extract_h1_skips_report_titles():
+    md = "# Internal Linking Report — example.com\n\n## Step 1\n"
+    assert _extract_h1(md) == ""
+
+
+# ── _extract_article_body ─────────────────────────────────────────────────────
+
+def test_extract_article_body_prefers_create_content_over_linking_report():
+    content = "# Best AI Tools\n\n## Introduction\n\n" + "article word " * 80
+    linking = (
+        "# Internal Linking Report — example.com\n\n"
+        "**Pages Analyzed:** 10\n\n"
+        "## Step 1: Site Structure Map\n\n|\n"
+    )
+    body = _extract_article_body(content, linking)
+    assert "Internal Linking Report" not in body
+    assert "Introduction" in body
+
+
+def test_extract_article_body_uses_on_page_article_not_report_banner():
+    onpage = (
+        "## On-Page SEO Report: Homepage\n\n"
+        "**Target Keyword:** widgets\n\n"
+        "# Best Widgets Guide\n\n## Introduction\n\n" + "optimized " * 80
+    )
+    body = _extract_article_body("", onpage, "")
+    assert "On-Page SEO Report" not in body
+    assert "Best Widgets Guide" in body or "Introduction" in body
+
+
+def test_extract_article_body_rejects_linking_strategy_only():
+    linking = (
+        "# Internal Linking Report — example.com\n\n"
+        "**Pages Analyzed:** 10\n\n"
+        "## Step 1: Site Structure Map\n\n"
+        "|— pillar page\n"
+    )
+    assert _extract_article_body("", "", linking) == ""
 
 
 # ── _extract_primary_keyword ──────────────────────────────────────────────────
@@ -400,6 +441,12 @@ def test_assemble_empty_steps_returns_validation_errors():
 
 def test_assemble_pillar_link_detected():
     assert _SAMPLE_RESULT["blocks"]["internal_linking_instructions"]["pillar_link_confirmed"] is True
+
+
+def test_assemble_body_uses_article_not_linking_report():
+    body = _SAMPLE_RESULT["blocks"]["body"]["full_body_markdown"]
+    assert "Internal Linking Report" not in body
+    assert "Introduction" in body or "Best AI Tools" in body
 
 
 # ── _build_image_brief ────────────────────────────────────────────────────────

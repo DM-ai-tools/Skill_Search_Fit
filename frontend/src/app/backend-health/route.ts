@@ -24,8 +24,7 @@ export async function GET() {
     });
     const data = await res.json();
     return NextResponse.json({ ...data, proxy_target: BACKEND }, { status: res.status });
-  } catch (err) {
-    console.error("[backend-health] failed:", err);
+  } catch {
     return NextResponse.json(
       { status: "error", message: "Cannot reach backend", backend: BACKEND },
       { status: 503 },

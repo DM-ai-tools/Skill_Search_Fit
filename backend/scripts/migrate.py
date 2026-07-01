@@ -1,5 +1,4 @@
 """Run SQL migrations in order."""
-import os
 import sys
 from pathlib import Path
 
@@ -7,18 +6,13 @@ import psycopg
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.config import normalize_database_url
+from app.config import settings
 
 MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "migrations"
 
 
 def main() -> None:
-    database_url = normalize_database_url(
-        os.environ.get(
-            "DATABASE_URL",
-            "postgresql://skillsearchfit:skillsearchfit@localhost:5432/skillsearchfit",
-        )
-    )
+    database_url = settings.database_url
 
     files = sorted(MIGRATIONS_DIR.glob("*.sql"))
     if not files:

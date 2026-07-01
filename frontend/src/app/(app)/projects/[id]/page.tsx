@@ -5,12 +5,10 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, FileText } from "lucide-react";
 import { api } from "@/lib/api";
-import type { ExecuteResponse, Output, Project, WorkspaceSession } from "@/lib/types";
-import { ReportDownloadPanel } from "@/components/reports/report-download-panel";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { Output, Project, WorkspaceSession } from "@/lib/types";
+import { SavedReportViewer } from "@/components/reports/saved-report-viewer";
+import { Card, CardContent } from "@/components/ui/card";
 import { displayPluginName } from "@/lib/plugin-catalog";
-import { getOutputMarkdown } from "@/lib/report-utils";
-
 export default function ProjectDetailPage() {
   const params = useParams();
   const projectId = params.id as string;
@@ -35,19 +33,6 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     load().catch(() => setError("Failed to load project"));
   }, [load]);
-
-  const selectedMarkdown = selected ? getOutputMarkdown(selected, selected.plugin_name) : "";
-  const downloadResult: ExecuteResponse | null = selected
-    ? {
-        execution_id: selected.execution_id || selected.id,
-        status: "completed",
-        output: {
-          markdown: selectedMarkdown,
-          structured: selected.generated_output,
-        },
-        workflow_steps: [],
-      }
-    : null;
 
   return (
     <div className="space-y-6">
@@ -122,28 +107,18 @@ export default function ProjectDetailPage() {
           )}
         </aside>
 
-        <section className="space-y-4">
-          {selected && downloadResult ? (
-            <>
-              <ReportDownloadPanel
-                result={downloadResult}
-                pluginName={selected.plugin_name || "Report"}
-              />
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Report content</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-xl border border-border/30 bg-background/60 p-4 text-sm text-foreground/80">
-                    {selectedMarkdown}
-                  </pre>
-                </CardContent>
-              </Card>
-            </>
+        <section className="min-w-0">
+          {selected ? (
+            <SavedReportViewer
+              output={selected}
+              projectId={projectId}
+              backHref="/projects"
+              backLabel="Back to projects"
+            />
           ) : (
             <Card>
               <CardContent className="p-8 text-center text-muted">
-                Select a report from the left to view and download it anytime.
+                Select a report from the left to view it with the same layout as when it was generated.
               </CardContent>
             </Card>
           )}

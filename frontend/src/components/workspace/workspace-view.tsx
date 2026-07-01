@@ -8,6 +8,7 @@ import type { ExecuteResponse, InputField, Output, Plugin, PluginAutofillResult,
 import { useProjectStore } from "@/stores/project-store";
 import { DynamicForm } from "@/components/plugins/dynamic-form";
 import { BentoTile } from "@/components/bento";
+import { AiSetupBanner } from "@/components/system/ai-setup-banner";
 import { ProjectGatePanel } from "@/components/projects/project-gate-panel";
 import { ReportDownloadPanel } from "@/components/reports/report-download-panel";
 import { WorkspaceGenerationPanel } from "@/components/workspace/workspace-generation-panel";
@@ -18,7 +19,8 @@ import { cn } from "@/lib/utils";
 import { formatApiError } from "@/lib/format-api-error";
 import { displayPluginName, getPluginCategory } from "@/lib/plugin-catalog";
 import { getPluginRunLabel } from "@/lib/plugin-actions";
-import { getExecutionMarkdown, getOutputMarkdown } from "@/lib/report-utils";
+import { savedReportHref } from "@/lib/saved-output";
+import { getExecutionMarkdown } from "@/lib/report-utils";
 import { validateAutofillValues } from "@/lib/autofill-validation";
 import { normalizePluginInputs, resolveSelectValue } from "@/lib/plugin-field-utils";
 import { getApiCapabilities } from "@/lib/api-capabilities";
@@ -55,7 +57,6 @@ export function WorkspaceView({
   const [activeStep, setActiveStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<ExecuteResponse | null>(null);
-  const [viewingOutput, setViewingOutput] = useState<Output | null>(null);
   const [schemaWarning, setSchemaWarning] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -68,6 +69,7 @@ export function WorkspaceView({
   const [fieldSuggestions, setFieldSuggestions] = useState<Record<string, string[]>>({});
   const [suggestionsEnabled, setSuggestionsEnabled] = useState(false);
   const [autofillWarning, setAutofillWarning] = useState("");
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingResultRef = useRef<ExecuteResponse | null>(null);
 
@@ -97,7 +99,14 @@ export function WorkspaceView({
   }, []);
 
   useEffect(() => {
-    loadData().catch(() => setError("Failed to load workspace"));
+    setLoadState("loading");
+    setError("");
+    loadData()
+      .then(() => setLoadState("ready"))
+      .catch((err) => {
+        setError(formatApiError(err) || "Failed to load workspace");
+        setLoadState("error");
+      });
   }, [loadData]);
 
   useEffect(() => {
@@ -323,7 +332,6 @@ export function WorkspaceView({
     setRunning(true);
     setGenerating(true);
     setResult(null);
-    setViewingOutput(null);
     pendingResultRef.current = null;
     startProgress();
     try {
@@ -397,9 +405,7 @@ export function WorkspaceView({
     return () => clearTimeout(t);
   }, [notes, saveNotes]);
 
-  const activeMarkdown = viewingOutput
-    ? getOutputMarkdown(viewingOutput, viewingOutput.plugin_name)
-    : getExecutionMarkdown(result?.output, plugin?.plugin_name);
+  const activeMarkdown = getExecutionMarkdown(result?.output, plugin?.plugin_name);
 
   if (!effectiveProjectId) {
     return (
@@ -412,8 +418,47 @@ export function WorkspaceView({
     );
   }
 
-  if (!plugin) {
+  if (loadState === "loading" && !plugin) {
     return <p className="text-muted">Loading workspace...</p>;
+  }
+
+  if ((loadState === "error" || error) && !plugin) {
+    return (
+      <div className="mx-auto max-w-lg space-y-4 text-center">
+        <p className="text-sm text-destructive">{error || "Failed to load workspace"}</p>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setLoadState("loading");
+            setError("");
+            loadData()
+              .then(() => setLoadState("ready"))
+              .catch((err) => {
+                setError(formatApiError(err) || "Failed to load workspace");
+                setLoadState("error");
+              });
+          }}
+        >
+          Retry
+        </Button>
+        <div>
+          <Link href="/plugins" className="text-sm font-medium text-primary hover:underline">
+            ← Back to plugins
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!plugin) {
+    return (
+      <div className="mx-auto max-w-lg space-y-3 text-center">
+        <p className="text-sm text-muted">Plugin not found.</p>
+        <Link href="/plugins" className="text-sm font-medium text-primary hover:underline">
+          ← Back to plugins
+        </Link>
+      </div>
+    );
   }
 
   const defaultValues = suggestionsEnabled ? autofillValues : {};
@@ -458,6 +503,7 @@ export function WorkspaceView({
       <div className="grid min-h-0 flex-1 gap-3 overflow-hidden lg:grid-cols-[minmax(260px,22%)_minmax(0,1fr)_minmax(240px,20%)]">
         <BentoTile variant="strong" className="flex min-h-0 flex-col overflow-hidden p-0">
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pt-4 pb-2 space-y-4">
+            <AiSetupBanner mode="execution" />
             {siteUrl && (
               <button
                 type="button"
@@ -516,7 +562,7 @@ export function WorkspaceView({
             />
           ) : (
           <>
-            {result && !viewingOutput && (
+            {result && (
               <div className="mb-4 space-y-3 p-4 pb-0">
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   {(result.output?.structured?.preview === true ||
@@ -593,14 +639,11 @@ export function WorkspaceView({
                   <button
                     type="button"
                     onClick={() => {
-                      setViewingOutput(o);
-                      setResult(null);
+                      router.push(savedReportHref(effectiveProjectId, o.id));
                     }}
                     className={cn(
                       "w-full rounded-xl border p-2.5 text-left text-xs transition-all duration-150",
-                      viewingOutput?.id === o.id
-                        ? "border-primary/30 bg-primary/8"
-                        : "border-border/40 bg-surface/30 hover:border-border-strong/50 hover:bg-surface/60",
+                      "border-border/40 bg-surface/30 hover:border-border-strong/50 hover:bg-surface/60",
                     )}
                   >
                     <p className="font-medium text-foreground">

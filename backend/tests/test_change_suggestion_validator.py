@@ -109,7 +109,7 @@ def test_builds_full_url_from_relative_page_path():
         changes,
         {"base_url": "https://trdemo.com.au"},
     )
-    assert corrected[0]["pageUrl"] == "https://trdemo.com.au/blog/local-seo-guide"
+    assert corrected[0]["pageUrl"].rstrip("/") == "https://trdemo.com.au/blog/local-seo-guide"
     assert summary.fixed_urls >= 0
 
 

@@ -144,7 +144,7 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted transition-colors hover:text-foreground focus:outline-none"
+                    className="absolute right-3 top-1/2 min-h-10 min-w-10 -translate-y-1/2 text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
@@ -182,7 +182,7 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirm((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted transition-colors hover:text-foreground focus:outline-none"
+                    className="absolute right-3 top-1/2 min-h-10 min-w-10 -translate-y-1/2 text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                     aria-label={showConfirm ? "Hide password" : "Show password"}
                   >
                     {showConfirm ? (
@@ -221,14 +221,14 @@ export default function SignupPage() {
                 >
                   I agree to the{" "}
                   <Link
-                    href="#"
+                    href="/features"
                     className="text-primary transition-opacity hover:opacity-75"
                   >
                     Terms of Service
                   </Link>{" "}
                   and{" "}
                   <Link
-                    href="#"
+                    href="/contact"
                     className="text-primary transition-opacity hover:opacity-75"
                   >
                     Privacy Policy
